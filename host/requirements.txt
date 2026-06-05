@@ -1,0 +1,11 @@
+# Host pipeline dependencies
+# Install with: pip install -r requirements.txt
+# Do NOT pin exact versions here until ready to freeze a release.
+
+numpy
+scipy
+pyserial          # SWO / serial ingest
+pyqtgraph         # 3D skeleton viewer (PyQt5 or PyQt6 backend)
+PyQt5             # or PyQt6 — pick one; pyqtgraph depends on it
+# open3d          # alternative 3D viewer — uncomment if preferred over pyqtgraph
+ahrs              # Madgwick / VQF orientation filters

@@ -1,0 +1,48 @@
+# ── STM32 / C build artifacts ──────────────────────────────────────────────
+build/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.su
+*.ioc.bak
+Debug/
+Release/
+STM32Make.make
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+*.egg
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.ipynb_checkpoints/
+
+# ── CAD / EDA temp files ─────────────────────────────────────────────────────
+*.bak
+*.kicad_prl
+*.dsn
+*-backups/
+fp-info-cache
+*.stl.bak
+*.step.bak
+*_autosave*
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
