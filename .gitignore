@@ -1,0 +1,23 @@
+# Geneva dataset (READ-ONLY, never version-controlled)
+Human gait and other movements - markers inertial sensors pressure insoles force plates/
+
+# Pipeline-generated data and outputs
+data/
+outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
