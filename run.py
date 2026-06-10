@@ -51,6 +51,7 @@ def validate(cfg, ctx):
     ev = ctx["ev"]
     refgrid = {j: np.full(len(tg), np.nan) for j in joints}   # reference on grid (display)
     joint_sign = {j: [] for j in joints}                       # anatomical sign for computed
+    rom_win = {j: {"computed": [], "optical": []} for j in joints}  # ROM within mocap windows
     for tr, r in zip(cfg["selection"]["trials"], aligns):
         c3dp = align.c3d_path(root, subj, sess, task, tr)
         ref_ang, rate, c = R.window_reference(c3dp, neutral)
@@ -66,6 +67,8 @@ def validate(cfg, ctx):
                 rmse, lag, sign, corr = R.best_lag_rmse(imu_on_mark, ref_ang[j], rate)
                 per_joint[mode][j].append(rmse)
                 if mode == "6dof":
+                    rom_win[j]["computed"].append(float(np.nanmax(imu_on_mark)-np.nanmin(imu_on_mark)))
+                    rom_win[j]["optical"].append(float(np.nanmax(ref_ang[j])-np.nanmin(ref_ang[j])))
                     winrec["joints"][j] = {"rmse_deg": rmse, "lag_s": lag, "corr": corr,
                                            "ref_rom": float(np.nanmax(ref_ang[j])-np.nanmin(ref_ang[j]))}
                     joint_sign[j].append(sign)
@@ -102,7 +105,9 @@ def validate(cfg, ctx):
             "heading_rmse_deg": head_rmse, "neutral_ref_rad": neutral,
             "step_event_timing_error_s": step_err, "n_matched_steps": len(step_errors),
             "refgrid": refgrid,
-            "joint_sign": {j: (1.0 if np.mean(joint_sign[j]) >= 0 else -1.0) for j in joints}}
+            "joint_sign": {j: (1.0 if np.mean(joint_sign[j]) >= 0 else -1.0) for j in joints},
+            "rom_window_deg": {j: {"computed": float(np.mean(rom_win[j]["computed"])),
+                                   "optical": float(np.mean(rom_win[j]["optical"]))} for j in joints}}
 
 
 def load_sensors(cfg):
@@ -232,7 +237,15 @@ def write_outputs(cfg, ctx):
         "subject": subj, "session": sess, "task": task,
         "walking_segment_s": [ctx["T0"], ctx["T1"]], "duration_s": ctx["T1"]-ctx["T0"],
         "primary_fusion": "6dof",
-        "joint_rom_deg_steady": {m: {j: A.rom(res[m]["joints"][j]["flexion"][mask]) for j in joints} for m in res},
+        "joint_rom_deg_full_bout": {m: {j: A.rom(res[m]["joints"][j]["flexion"][mask]) for j in joints} for m in res},
+        "joint_rom_in_window_deg": val.get("rom_window_deg", {}),
+        "joint_rom_confidence": {
+            "ankle": "full-bout, both sensors impact-aligned (<25 ms)",
+            "knee": "full-bout, both sensors impact-aligned (<25 ms)",
+            "hip": "LOWER confidence over full bout: pelvis (SA) only optical-skew aligned "
+                   "(~0.4 s residual) so thigh/pelvis are paired at slightly different gait "
+                   "phases; in-window numbers (marker-aligned) are reliable.",
+        },
         "joint_peak_vel_dps_steady": {j: float(np.max(np.abs(res["6dof"]["joints"][j]["ang_vel"][mask]))) for j in joints},
         "validation_rmse_deg": val["per_joint_rmse_deg"],
         "heading_rmse_vs_optical_deg": val["heading_rmse_deg"],
@@ -246,7 +259,17 @@ def write_outputs(cfg, ctx):
         "intersensor_refine": {n: ctx["refine"][n] for n in cfg["selection"]["nodes"]},
         "magnetometer": {
             "channel": "tag 0x18 @256Hz (NOT 0x15/64Hz which is barometer)",
-            "verdict": "9-DOF does NOT improve heading vs 6-DOF (optical-confirmed); indoor field distorted",
+            "world_frame_test": "0x18 is a GENUINE world-constant magnetometer (world-frame "
+                "inclination stays ~-50 deg across rotations spanning up to 91 deg; static "
+                "hold dip -49.5+/-1.3 deg) -> NOT an onboard-derived artifact.",
+            "local_inclination_deg": -50,
+            "geomagnetic_inclination_geneva_deg": 63,
+            "verdict": "9-DOF does NOT improve heading vs 6-DOF (optical-confirmed). The mag is "
+                "real but the indoor field is distorted: inclination ~50 vs 63 deg, |B| swings "
+                "3.7-15% along the walkway. Gate the mag on field quality for real hardware.",
+            "heading_window_caveat": "The optical heading arbiter uses only the four ~3 s mocap "
+                "windows (straight passes); it captures short-term heading error but CANNOT "
+                "measure long-term (minutes) yaw drift.",
         },
         "caveats": [
             "Magnetometer delivered at 256 Hz (tag 0x18), sample-aligned with accel/gyro; "
@@ -379,7 +402,10 @@ def main(cfg_path="config/default.yaml"):
     for j in joints:
         r6 = val["per_joint_rmse_deg"]["6dof"][j]
         r9 = val["per_joint_rmse_deg"].get("9dof", {}).get(j, float("nan"))
-        print(f"  {j:5s}: 6-DOF RMSE={r6:5.1f} deg   9-DOF RMSE={r9:5.1f} deg")
+        rc = val["rom_window_deg"][j]["computed"]; ro = val["rom_window_deg"][j]["optical"]
+        conf = "  [full-bout hip = LOWER confidence: SA +/-0.4s]" if j == "hip" else ""
+        print(f"  {j:5s}: RMSE 6-DOF={r6:5.1f} 9-DOF={r9:5.1f} deg | "
+              f"ROM-in-window computed={rc:5.1f} vs optical={ro:5.1f} deg{conf}")
     if val["heading_rmse_deg"]:
         h = val["heading_rmse_deg"]
         print(f"  pelvis heading vs optical: 6-DOF={h.get('6dof', float('nan')):.1f} deg  "

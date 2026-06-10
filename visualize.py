@@ -66,7 +66,8 @@ def save_dashboard(d, summary, base):
         if i == 0:
             ax.legend(loc="upper right", fontsize=7, ncol=3)
         rmse = summary.get("validation_rmse_deg", {}).get("6dof", {}).get(j, float("nan"))
-        ax.text(0.01, 0.92, f"RMSE={rmse:.1f} deg  ROM={summary.get('joint_rom_deg_steady',{}).get('6dof',{}).get(j,float('nan')):.0f}",
+        rw = summary.get("joint_rom_in_window_deg", {}).get(j, {})
+        ax.text(0.01, 0.92, f"RMSE={rmse:.1f} deg   ROM(window) computed={rw.get('computed',float('nan')):.0f} vs optical={rw.get('optical',float('nan')):.0f}",
                 transform=ax.transAxes, fontsize=8, va="top")
     fig.axes[-1].set_xlabel("time (s)")
 
