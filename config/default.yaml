@@ -1,0 +1,75 @@
+# Mythos MECH — pipeline configuration (everything config-driven).
+# Default: P01 / 2minWalk / RIGHT leg / nodes RF,RS,RT,SA.
+
+dataset:
+  # Root containing P01_S01 .. P10_S01 (READ-ONLY; never written to).
+  root: "Human gait and other movements - markers inertial sensors pressure insoles force plates/researchdata"
+  subject: "P01"
+  session: "S01"
+
+selection:
+  task: "2minWalk"          # trial family to analyse
+  trials: ["01", "02", "03", "04"]   # the four 2minWalk passes (optical windows)
+  leg: "right"
+  # Kinematic nodes used (proximal->distal naming is the segment the IMU sits on).
+  nodes: ["RF", "RS", "RT", "SA"]    # foot, shank, thigh, pelvis
+  # Joint topology: name -> [distal_node, proximal_node]; angle = proximal vs distal.
+  joints:
+    ankle: ["RF", "RS"]
+    knee:  ["RS", "RT"]
+    hip:   ["RT", "SA"]
+  foot_node: "RF"           # node used for step detection
+  ref_align_node: "RF"      # node used for BIN<->sync_data cross-correlation
+
+# Map kinematic node -> the BIN sensor short code in the filename.
+sensor_map:
+  RF: "RF"   # right foot
+  RS: "RS"   # right shank
+  RT: "RT"   # right thigh
+  SA: "SA"   # pelvis (sacrum)
+
+bin_format:
+  fs_high: 256.0            # accel & gyro (Hz)
+  fs_mag: 64.0             # magnetometer (Hz)
+  # counts -> SI
+  acc_counts_per_g: 2048.0
+  gyr_counts_per_dps: 16.384
+  gravity: 9.80665
+  mag_range_gauss: 500.0    # provisional/documented assumption; calibration removes scale/bias
+
+alignment:
+  # Cross-correlation of BIN accel-magnitude (256 Hz) vs sync_data accel-magnitude.
+  # sync_data is used ONLY here (locate window + confirm decode); it never enters fusion.
+  min_corr: 0.5             # warn if best normalized correlation below this
+  refine: true
+
+segment:
+  # Walking-segment delimiting around each optical anchor, from foot-IMU activity.
+  activity_node: "RF"
+  smooth_s: 0.5             # moving-RMS window on gyro magnitude
+  gyro_rms_threshold_dps: 60.0   # walking if foot gyro RMS exceeds this
+  min_gap_s: 1.0           # bridge sub-threshold gaps shorter than this
+  pad_s: 0.5               # pad around detected walking run
+  max_segment_s: 150.0     # safety cap (2-min walk + margin)
+
+mag_calibration:
+  # Fit hard/soft-iron ellipsoid from VARIED-ORIENTATION task windows (NOT walking).
+  enabled: true
+  source_tasks: ["CalibrationTask", "TUG", "Sitting"]   # located via their own sync_data xcorr
+  source_trials: { CalibrationTask: ["01","02","03"], TUG: ["01","02"], Sitting: ["01"] }
+  method: "ellipsoid"       # hard+soft iron; falls back to identity if unstable
+  min_samples: 5000
+
+fusion:
+  algorithm: "madgwick"     # madgwick | mahony
+  beta: 0.05                # Madgwick gain (9-DOF)
+  beta_6dof: 0.033          # Madgwick gain (6-DOF, no mag)
+  kp: 1.0                   # Mahony proportional (if used)
+  ki: 0.0
+  run_modes: ["6dof", "9dof"]   # compute both and compare yaw/RMSE
+  init_static_s: 0.5        # use first part of segment to initialise orientation from gravity(+mag)
+
+output:
+  dir: "outputs"
+  data_dir: "data"
+  angles_unit: "deg"
