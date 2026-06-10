@@ -49,6 +49,8 @@ def validate(cfg, ctx):
     step_errors = []
     per_window = []
     ev = ctx["ev"]
+    refgrid = {j: np.full(len(tg), np.nan) for j in joints}   # reference on grid (display)
+    joint_sign = {j: [] for j in joints}                       # anatomical sign for computed
     for tr, r in zip(cfg["selection"]["trials"], aligns):
         c3dp = align.c3d_path(root, subj, sess, task, tr)
         ref_ang, rate, c = R.window_reference(c3dp, neutral)
@@ -66,6 +68,13 @@ def validate(cfg, ctx):
                 if mode == "6dof":
                     winrec["joints"][j] = {"rmse_deg": rmse, "lag_s": lag, "corr": corr,
                                            "ref_rom": float(np.nanmax(ref_ang[j])-np.nanmin(ref_ang[j]))}
+                    joint_sign[j].append(sign)
+                    # raw (anatomical) reference, offset-matched to the signed computed angle
+                    signed_imu = sign * imu_on_mark
+                    disp = np.asarray(ref_ang[j], float)
+                    disp = disp + (np.nanmean(signed_imu) - np.nanmean(disp))
+                    gidx = np.clip(np.searchsorted(tg, tmark), 0, len(tg)-1)
+                    refgrid[j][gidx] = disp
         # heading arbiter (pelvis)
         opt_head = optical_pelvis_heading(M)
         for mode in ("6dof", "9dof"):
@@ -91,7 +100,9 @@ def validate(cfg, ctx):
     step_err = float(np.mean(step_errors)) if step_errors else float("nan")
     return {"per_joint_rmse_deg": agg, "per_window": per_window,
             "heading_rmse_deg": head_rmse, "neutral_ref_rad": neutral,
-            "step_event_timing_error_s": step_err, "n_matched_steps": len(step_errors)}
+            "step_event_timing_error_s": step_err, "n_matched_steps": len(step_errors),
+            "refgrid": refgrid,
+            "joint_sign": {j: (1.0 if np.mean(joint_sign[j]) >= 0 else -1.0) for j in joints}}
 
 
 def load_sensors(cfg):
@@ -187,18 +198,20 @@ def write_outputs(cfg, ctx):
     facc = np.linalg.norm(ctx["foot_seg_acc"], axis=1)
     strike = np.zeros(len(tg), int); strike[ev["foot_strike"][ev["foot_strike"] < len(tg)]] = 1
 
-    # reference angle on the grid (NaN outside the 4 mocap windows), per joint (6-DOF aligned)
-    refgrid = {j: np.full(len(tg), np.nan) for j in joints}
-    # (filled by re-deriving reference on each window timeline -> grid)
+    # reference angle on the grid (NaN outside the 4 mocap windows), 6-DOF aligned
+    refgrid = val.get("refgrid", {j: np.full(len(tg), np.nan) for j in joints})
+    sign = val.get("joint_sign", {j: 1.0 for j in joints})   # anatomical sign per joint
     cols = {"t_opt_s": tg}
     for j in joints:
-        f6 = res["6dof"]["joints"][j]["flexion"]
+        s = sign[j]
+        f6 = s * res["6dof"]["joints"][j]["flexion"]
         cols[f"{j}_deg"] = f6
-        cols[f"{j}_vel_dps"] = res["6dof"]["joints"][j]["ang_vel"]
-        cols[f"{j}_acc_dps2"] = res["6dof"]["joints"][j]["ang_acc"]
+        cols[f"{j}_vel_dps"] = s * res["6dof"]["joints"][j]["ang_vel"]
+        cols[f"{j}_acc_dps2"] = s * res["6dof"]["joints"][j]["ang_acc"]
         if "9dof" in res:
-            cols[f"{j}_deg_9dof"] = res["9dof"]["joints"][j]["flexion"]
+            cols[f"{j}_deg_9dof"] = s * res["9dof"]["joints"][j]["flexion"]
         cols[f"{j}_ref_deg"] = refgrid[j]
+        cols[f"{j}_error_deg"] = f6 - refgrid[j]
     cols["foot_acc_mag"] = facc
     cols["foot_strike"] = strike
     cols["steady_state"] = mask.astype(int)
@@ -219,8 +232,8 @@ def write_outputs(cfg, ctx):
         "subject": subj, "session": sess, "task": task,
         "walking_segment_s": [ctx["T0"], ctx["T1"]], "duration_s": ctx["T1"]-ctx["T0"],
         "primary_fusion": "6dof",
-        "joint_rom_deg": {m: {j: A.rom(res[m]["joints"][j]["flexion"]) for j in joints} for m in res},
-        "joint_peak_vel_dps": {j: float(np.max(np.abs(res["6dof"]["joints"][j]["ang_vel"]))) for j in joints},
+        "joint_rom_deg_steady": {m: {j: A.rom(res[m]["joints"][j]["flexion"][mask]) for j in joints} for m in res},
+        "joint_peak_vel_dps_steady": {j: float(np.max(np.abs(res["6dof"]["joints"][j]["ang_vel"][mask]))) for j in joints},
         "validation_rmse_deg": val["per_joint_rmse_deg"],
         "heading_rmse_vs_optical_deg": val["heading_rmse_deg"],
         "gait": {"cadence_steps_per_min": ctx["cad"]["cadence_steps_per_min"],
@@ -330,14 +343,15 @@ def compute_core(cfg):
     cad = G.cadence_stats(ev["foot_strike"], fs, mask=mask)
 
     # ---- console summary ----
-    print(f"\n=== Joint angles (6-DOF primary) over {T1-T0:.0f}s walk ===")
+    print(f"\n=== Joint angles (6-DOF primary) — steady-state ROM (turns excluded) ===")
     for jname in joints:
         f6 = results["6dof"]["joints"][jname]["flexion"]
         f9 = results["9dof"]["joints"][jname]["flexion"] if "9dof" in results else None
-        line = (f"  {jname:5s}: ROM={A.rom(f6):5.1f} deg  range=[{np.min(f6):6.1f},{np.max(f6):6.1f}]  "
-                f"|vel|max={np.max(np.abs(results['6dof']['joints'][jname]['ang_vel'])):.0f} deg/s")
+        rom6 = A.rom(f6[mask])
+        line = (f"  {jname:5s}: ROM={rom6:5.1f} deg  "
+                f"|vel|max={np.max(np.abs(results['6dof']['joints'][jname]['ang_vel'][mask])):.0f} deg/s")
         if f9 is not None:
-            line += f"   (9-DOF ROM={A.rom(f9):.1f})"
+            line += f"   (9-DOF ROM={A.rom(f9[mask]):.1f})"
         print(line)
     print(f"\n=== Gait (steady-state, {len(turns)} turnarounds excluded) ===")
     print(f"  foot strikes total={len(ev['foot_strike'])}  steady strides={cad['n_strides']}")

@@ -64,6 +64,7 @@ fusion:
   algorithm: "madgwick"     # madgwick | mahony
   beta: 0.05                # Madgwick gain (9-DOF)
   beta_6dof: 0.033          # Madgwick gain (6-DOF, no mag)
+  joint_tau_s: 0.3          # complementary-filter time constant for joint angles (s)
   kp: 1.0                   # Mahony proportional (if used)
   ki: 0.0
   run_modes: ["6dof", "9dof"]   # compute both and compare yaw/RMSE
