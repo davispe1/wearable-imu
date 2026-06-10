@@ -18,6 +18,68 @@ import align
 from bin_reader import read_bin
 import extract
 from kincore import fusion as F, calibration as C, angles as A, gait as G, segment as S
+from validation import reference as R
+
+
+def optical_pelvis_heading(M):
+    """Lab-frame pelvis heading (deg, unwrapped) from pelvis markers over frames."""
+    if "midASIS" in M and "SACR" in M:
+        fwd = M["midASIS"] - M["SACR"]
+    else:
+        # ML x up gives anterior-ish; fall back to RASI->mean
+        fwd = M["RASI"] - M["RPSI"] if ("RPSI" in M) else M["RASI"]
+    return np.degrees(np.unwrap(np.arctan2(fwd[:, 1], fwd[:, 0])))
+
+
+def validate(cfg, ctx):
+    """Marker-based validation: per-joint RMSE (sub-sample aligned) + heading arbiter."""
+    root = cfg["dataset"]["root"]; subj = cfg["dataset"]["subject"]; sess = cfg["dataset"]["session"]
+    task = cfg["selection"]["task"]; fs = cfg["bin_format"]["fs_high"]
+    joints = list(cfg["selection"]["joints"])
+    T0, tg, results, aligns, epoch, foot = (ctx[k] for k in
+        ("T0", "tg", "results", "aligns", "epoch", "foot"))
+    # neutral from Static_01 markers
+    try:
+        neutral = R.neutral_reference(align.c3d_path(root, subj, sess, "Static", "01"))
+    except Exception as e:
+        neutral = {j: 0.0 for j in joints}; print(f"(no static neutral: {e})")
+
+    per_joint = {m: {j: [] for j in joints} for m in results}
+    heading = {"6dof": [], "9dof": []}
+    per_window = []
+    for tr, r in zip(cfg["selection"]["trials"], aligns):
+        c3dp = align.c3d_path(root, subj, sess, task, tr)
+        ref_ang, rate, c = R.window_reference(c3dp, neutral)
+        M, _, _ = R.read_markers(c3dp)
+        t_win = (epoch[foot] + r.bin_start_idx/fs) - T0          # optical time of window start
+        tmark = t_win + np.arange(ref_ang[joints[0]].shape[0]) / rate
+        winrec = {"trial": tr, "t_opt_start_s": t_win, "joints": {}}
+        for mode in results:
+            for j in joints:
+                imu_full = results[mode]["joints"][j]["flexion"]
+                imu_on_mark = np.interp(tmark, tg, imu_full)
+                rmse, lag, sign, corr = R.best_lag_rmse(imu_on_mark, ref_ang[j], rate)
+                per_joint[mode][j].append(rmse)
+                if mode == "6dof":
+                    winrec["joints"][j] = {"rmse_deg": rmse, "lag_s": lag, "corr": corr,
+                                           "ref_rom": float(np.nanmax(ref_ang[j])-np.nanmin(ref_ang[j]))}
+        # heading arbiter (pelvis)
+        opt_head = optical_pelvis_heading(M)
+        for mode in ("6dof", "9dof"):
+            if mode not in results:
+                continue
+            qg_SA = results[mode]["qg"]["SA"]
+            h_imu, _, _ = F.heading_deg(qg_SA)
+            h_on_mark = np.interp(tmark, tg, h_imu)
+            a = h_on_mark - np.nanmean(h_on_mark); b = opt_head - np.nanmean(opt_head)
+            n = min(len(a), len(b))
+            heading[mode].append(float(np.sqrt(np.nanmean((a[:n]-b[:n])**2))))
+        per_window.append(winrec)
+
+    agg = {m: {j: float(np.nanmean(per_joint[m][j])) for j in joints} for m in results}
+    head_rmse = {m: float(np.nanmean(heading[m])) for m in heading if heading[m]}
+    return {"per_joint_rmse_deg": agg, "per_window": per_window,
+            "heading_rmse_deg": head_rmse, "neutral_ref_rad": neutral}
 
 
 def load_sensors(cfg):
@@ -154,7 +216,8 @@ def main(cfg_path="config/default.yaml"):
         jres = {}
         for jname, (dist, prox) in joints.items():
             ja = A.joint_angles(qg[dist], qg[prox], gyr_grid[dist], gyr_grid[prox],
-                                grav0[dist], grav0[prox], axis_mask=mask)
+                                grav0[dist], grav0[prox], axis_mask=mask, fs=fs,
+                                tau=cfg["fusion"].get("joint_tau_s", 1.0))
             flex = ja["flexion"]
             jres[jname] = {
                 "flexion": flex,
@@ -187,10 +250,25 @@ def main(cfg_path="config/default.yaml"):
     for s, e, ang in turns:
         print(f"    turn t=[{tg[s]:.1f},{tg[e]:.1f}]s {ang:+.0f} deg")
 
-    return cfg, dict(T0=T0, T1=T1, tg=tg, results=results, ev=ev, turns=turns,
-                     mask=mask, cad=cad, calib=calib, epoch=epoch, refine=refine,
-                     aligns=aligns, foot_seg_acc=foot_seg_acc, foot_seg_gyr=foot_seg_gyr,
-                     si=si, rtc=rtc, skew=skew, bd=bd)
+    ctx = dict(T0=T0, T1=T1, tg=tg, results=results, ev=ev, turns=turns,
+               mask=mask, cad=cad, calib=calib, epoch=epoch, refine=refine,
+               aligns=aligns, foot=foot, foot_seg_acc=foot_seg_acc,
+               foot_seg_gyr=foot_seg_gyr, si=si, rtc=rtc, skew=skew, bd=bd)
+
+    # ---- validation against optical markers (read ONLY here) ----
+    val = validate(cfg, ctx)
+    ctx["val"] = val
+    print("\n=== Validation vs optical markers (RMSE over 4 windows, sub-sample aligned) ===")
+    for j in joints:
+        r6 = val["per_joint_rmse_deg"]["6dof"][j]
+        r9 = val["per_joint_rmse_deg"].get("9dof", {}).get(j, float("nan"))
+        print(f"  {j:5s}: 6-DOF RMSE={r6:5.1f} deg   9-DOF RMSE={r9:5.1f} deg")
+    if val["heading_rmse_deg"]:
+        h = val["heading_rmse_deg"]
+        print(f"  pelvis heading vs optical: 6-DOF={h.get('6dof', float('nan')):.1f} deg  "
+              f"9-DOF={h.get('9dof', float('nan')):.1f} deg  "
+              f"-> {'9-DOF better' if h.get('9dof',9e9)<h.get('6dof',0) else '6-DOF better (mag does not help)'}")
+    return cfg, ctx
 
 
 if __name__ == "__main__":

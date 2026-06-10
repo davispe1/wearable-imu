@@ -76,7 +76,7 @@ def _segment_sagittal_rotation(grav, grav0, axis):
 
 
 def joint_angles(q_dist, q_prox, gyr_dist, gyr_prox, grav0_dist, grav0_prox,
-                 axis_mask=None):
+                 axis_mask=None, fs=256.0, tau=1.0):
     """Sagittal joint flexion (deg) over time, yaw-immune and drift-free.
 
     flexion(t) = dTheta_distal(t) - dTheta_proximal(t), where each dTheta is the
@@ -99,18 +99,30 @@ def joint_angles(q_dist, q_prox, gyr_dist, gyr_prox, grav0_dist, grav0_prox,
     gp = gravity_in_sensor(q_prox)
     th_d = _segment_sagittal_rotation(gd, grav0_dist/np.linalg.norm(grav0_dist), jd)
     th_p = _segment_sagittal_rotation(gp, grav0_prox/np.linalg.norm(grav0_prox), jp)
-    flex = np.unwrap(th_d - th_p)
-    # orient so the larger excursion is positive (flexion)
-    if abs(np.min(flex)) > abs(np.max(flex)):
-        flex = -flex
-    flex = flex - np.median(flex[:max(1, len(flex)//50)])  # zero near segment start
+    # gravity-projection joint angle (drift-free, but lags during fast motion):
+    flex_grav = np.unwrap(th_d - th_p)
+    # joint angular velocity about the joint axes (good for fast motion, drifts):
+    joint_rate = gyr_dist @ jd - gyr_prox @ jp        # rad/s
+    # complementary fusion: gyro for high frequency, gravity for low frequency / drift
+    flex = _complementary(flex_grav, joint_rate, fs, tau)
     return {
         "flexion": np.degrees(flex),
-        "seg_distal_deg": np.degrees(th_d),
-        "seg_proximal_deg": np.degrees(th_p),
+        "flexion_gravity_only": np.degrees(flex_grav),
+        "joint_rate_dps": np.degrees(joint_rate),
         "joint_axis_distal": jd,
         "joint_axis_proximal": jp,
     }
+
+
+def _complementary(theta_lf, rate, fs, tau):
+    """Complementary filter: high-pass gyro integral + low-pass gravity-based angle."""
+    dt = 1.0 / fs
+    a = tau / (tau + dt)
+    out = np.empty_like(theta_lf)
+    out[0] = theta_lf[0]
+    for i in range(1, len(theta_lf)):
+        out[i] = a * (out[i-1] + rate[i] * dt) + (1 - a) * theta_lf[i]
+    return out
 
 
 def derivative(x, fs):
