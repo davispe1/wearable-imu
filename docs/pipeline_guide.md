@@ -1,5 +1,10 @@
 # Mythos MECH — Pipeline Guide
 
+> **See also:** [`methods.md`](methods.md) — full per-stage technical/methods manual
+> (algorithms, equations, parameters); [`user_guide.md`](user_guide.md) — usage manual
+> (run commands, config knobs, output schemas, reading the visuals/metrics). This file is a
+> concise overview; the two manuals are the detailed references.
+
 Wearable lower-limb IMU kinematics pipeline. It performs **9-DOF-capable sensor fusion**
 on the Grouvel et al. 2023 (Geneva) dataset — 8 Physilog 6S IMUs — and produces gait /
 biomechanical parameters plus a 3D visualization. It is a rehearsal for real wearable
@@ -94,7 +99,7 @@ Dependencies: `numpy scipy pandas ezc3d pyyaml matplotlib` (core) and
 
 - Walking segment: continuous **128.7 s** bout (the real 2-min walk), 7 turnarounds excluded from gait stats.
 - Gait: **cadence 109 steps/min**, stride **1.10 ± 0.07 s**, 99 steady strides.
-- Joint-angle RMSE vs optical (sub-sample aligned, offset-removed): **hip 8.6°, ankle 8.5°, knee 15.6°** (knee is fastest-moving, hardest).
+- Joint-angle RMSE vs optical (lag-optimised, offset-removed): **ankle 8.2°, knee 14.0°, hip 8.8°** (knee is fastest-moving, hardest).
 - **Magnetometer verdict:** 9-DOF does **not** improve heading. Optical arbiter: pelvis heading RMSE **6-DOF 5.7° vs 9-DOF 5.9°**. The indoor force-plate lab distorts the field (|B| swings 3.7–15% during the walk; inclination ≈ 88° vs Geneva's ~63°). 6-DOF is the primary orientation; 9-DOF is logged for comparison.
 
 ---

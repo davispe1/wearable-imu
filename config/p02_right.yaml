@@ -55,7 +55,6 @@ mag_calibration:
   source_tasks:
   - CalibrationTask
   - TUG
-  - Sitting
   source_trials:
     CalibrationTask:
     - '01'
@@ -64,8 +63,6 @@ mag_calibration:
     TUG:
     - '01'
     - '02'
-    Sitting:
-    - '01'
   method: ellipsoid
   min_samples: 5000
 fusion:

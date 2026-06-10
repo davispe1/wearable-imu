@@ -55,8 +55,8 @@ segment:
 mag_calibration:
   # Fit hard/soft-iron ellipsoid from VARIED-ORIENTATION task windows (NOT walking).
   enabled: true
-  source_tasks: ["CalibrationTask", "TUG", "Sitting"]   # located via their own sync_data xcorr
-  source_trials: { CalibrationTask: ["01","02","03"], TUG: ["01","02"], Sitting: ["01"] }
+  source_tasks: ["CalibrationTask", "TUG"]   # varied-orientation tasks; located via sync_data xcorr
+  source_trials: { CalibrationTask: ["01","02","03"], TUG: ["01","02"] }   # NOT Sitting (no orientation variety)
   method: "ellipsoid"       # hard+soft iron; falls back to identity if unstable
   min_samples: 5000
 
