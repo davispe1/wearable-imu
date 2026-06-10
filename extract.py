@@ -96,6 +96,47 @@ def detect_walking_segment(foot_gyr, fs_high, seg_cfg, anchor_idxs):
     return int(s0), int(s1), runs
 
 
+def refine_intersensor(si, epoch, foot, fs_high, T0, T1, min_corr=0.45):
+    """Refine each non-foot sensor's optical-time epoch against the foot using shared
+    high-frequency accel impacts (heel strikes propagate to all sensors).
+
+    Returns (refined_epoch, detail). Only confident refinements (corr>=min_corr) are
+    applied; others keep the optical-skew epoch (e.g. the pelvis, where impacts are
+    damped and the periodic walking signal is stride-ambiguous). IMU-only — markers
+    are never used (that would break the raw-data contract / selftest).
+    """
+    from scipy.signal import butter, filtfilt
+    from align import ncc_valid
+    bhf, ahf = butter(4, 8/(fs_high/2), "high")
+
+    def impacts(acc, e):
+        i0 = max(0, int(round((T0 - e) * fs_high)))
+        i1 = int(round((T1 - e) * fs_high))
+        i1 = min(len(acc), i1)
+        x = np.linalg.norm(acc[i0:i1], axis=1)
+        t = e + np.arange(i0, i1) / fs_high
+        return t, np.abs(filtfilt(bhf, ahf, x))
+
+    tf, impf = impacts(si[foot][0], epoch[foot])
+    refined = dict(epoch)
+    detail = {}
+    half = 0.6
+    W = int(half * fs_high)
+    for node in si:
+        if node == foot:
+            detail[node] = {"lag_ms": 0.0, "corr": 1.0, "applied": True}
+            continue
+        tn, impn = impacts(si[node][0], epoch[node])
+        sig = np.interp(tf, tn, impn)
+        r = ncc_valid(np.concatenate([np.zeros(W), sig, np.zeros(W)]), impf)
+        k = int(np.argmax(r)); lag = (k - W) / fs_high; corr = float(r[k])
+        applied = corr >= min_corr
+        if applied:
+            refined[node] = epoch[node] - lag    # shift so impacts coincide with foot
+        detail[node] = {"lag_ms": lag*1000, "corr": corr, "applied": applied}
+    return refined, detail
+
+
 def run_extract(cfg_path="config/default.yaml"):
     cfg = yaml.safe_load(open(cfg_path))
     ds = cfg["dataset"]; root, subj, sess = ds["root"], ds["subject"], ds["session"]
@@ -141,6 +182,14 @@ def run_extract(cfg_path="config/default.yaml"):
     print(f"\nWalking segment (optical time): [{T0:.2f},{T1:.2f}]s = {dur:.1f}s, "
           f"covering {len(anchors)} optical anchors")
 
+    # 3b) refine inter-sensor timing against the foot via shared heel-strike impacts
+    epoch, refine_detail = refine_intersensor(si, epoch, foot, fs_high, T0, T1)
+    print("Inter-sensor impact refinement (vs foot):")
+    for node in nodes:
+        d = refine_detail[node]
+        flag = "applied" if d["applied"] else "KEPT optical-skew (impacts too weak)"
+        print(f"  {node}: lag={d['lag_ms']:+.0f}ms corr={d['corr']:.3f} -> {flag}")
+
     # 4) common 256 Hz optical grid; write per-sensor slices on each sensor's NATIVE
     #    samples covering the window, carrying a common t_opt column for downstream.
     out_dir = os.path.join(cfg["output"]["data_dir"], f"{subj}_{sess}_{task}")
@@ -175,6 +224,7 @@ def run_extract(cfg_path="config/default.yaml"):
             "skew_confident": [{"trial": d[0], "corr": d[3], "skew_s": d[4]}
                                for d in skew[node].detail if d[3] >= 0.6],
             "epoch_offset_s": epoch[node],
+            "intersensor_refine": refine_detail[node],
             "slice": sensor_slice_info[node],
             "invalid_pct": 100*bdata[node].invalid_records/bdata[node].total_records,
             "acc_mag_ratio": bdata[node].meta["acc_mag_ratio"],
