@@ -167,7 +167,7 @@ def run_extract(cfg_path="config/default.yaml"):
     foot_acc_mag = np.linalg.norm(si[foot][0], axis=1)
     foot_gyr_mag = np.linalg.norm(si[foot][1], axis=1)
     aligns = []
-    for trial in sel["trials"]:
+    for trial in align.available_trials(root, subj, sess, task, sel["trials"]):
         res = align.align_trial(foot_acc_mag, foot_gyr_mag, fs_high, rtc[foot],
                                 root, subj, sess, task, trial, foot, skew[foot].skew_s)
         aligns.append((trial, res))

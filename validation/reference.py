@@ -40,45 +40,49 @@ def _signed_angle(u, v, ml):
     return np.arctan2(sin, cos)
 
 
-def sagittal_reference(M):
-    """Return dict of signed sagittal flexion (rad) per joint over frames (RIGHT leg).
+def sagittal_reference(M, side="R"):
+    """Return dict of signed sagittal flexion (rad) per joint over frames.
 
-    Uses joint centres for segment long axes and the pelvis ML axis for the sagittal
-    plane. Angles are raw (not yet neutral-subtracted).
+    `side` = "R" or "L". Uses joint centres for segment long axes and the pelvis ML axis
+    for the sagittal plane. Angles are raw (not yet neutral-subtracted).
     """
+    other = "L" if side == "R" else "R"
     def g(name): return M[name]
-    HJC, KJC, AJC = g("RHJC"), g("RKJC"), g("RAJC")
-    # pelvis mediolateral axis (points left): LHJC - RHJC (fallback LASI-RASI)
-    if "LHJC" in M:
-        ml = _unit(g("LHJC") - HJC)
+    HJC, KJC, AJC = g(f"{side}HJC"), g(f"{side}KJC"), g(f"{side}AJC")
+    # pelvis mediolateral axis (contralateral - ipsilateral hip joint centre)
+    if f"{other}HJC" in M:
+        ml = _unit(g(f"{other}HJC") - HJC)
     else:
-        ml = _unit(g("LASI") - g("RASI"))
+        ml = _unit(g(f"{other}ASI") - g(f"{side}ASI"))
     # pelvis anterior axis and down axis
     ap = _unit(g("midASIS") - g("SACR")) if ("midASIS" in M and "SACR" in M) else None
     thigh = KJC - HJC
     shank = AJC - KJC
-    foot = (g("RTOE") - AJC) if "RTOE" in M else (g("RFMH") - AJC)
+    foot = (g(f"{side}TOE") - AJC) if f"{side}TOE" in M else (g(f"{side}FMH") - AJC)
     out = {}
     out["knee"] = _signed_angle(thigh, shank, ml)        # straight ~0
     out["ankle"] = _signed_angle(shank, foot, ml)
     if ap is not None:
-        pelvis_down = _unit(np.cross(ml, ap))            # ml x ap -> down-ish
-        out["hip"] = _signed_angle(pelvis_down, thigh, ml)
+        pelvis_down = _unit(np.cross(ml, ap))            # ml x ap -> vertical-ish
+        # force it to point downward (global -z) so the sign convention is leg-independent
+        if np.nanmean(pelvis_down[:, 2]) > 0:
+            pelvis_down = -pelvis_down
     else:
-        out["hip"] = _signed_angle(np.tile([0, 0, -1.0], (len(thigh), 1)), thigh, ml)
+        pelvis_down = np.tile([0, 0, -1.0], (len(thigh), 1))
+    out["hip"] = _signed_angle(pelvis_down, thigh, ml)
     return out
 
 
-def neutral_reference(static_path):
+def neutral_reference(static_path, side="R"):
     M, _, _ = read_markers(static_path)
-    ref = sagittal_reference(M)
+    ref = sagittal_reference(M, side)
     return {k: float(np.nanmedian(v)) for k, v in ref.items()}
 
 
-def window_reference(c3d_path, neutral):
+def window_reference(c3d_path, neutral, side="R"):
     """Reference flexion (deg) per joint over a trial window, neutral-subtracted."""
     M, rate, c = read_markers(c3d_path)
-    raw = sagittal_reference(M)
+    raw = sagittal_reference(M, side)
     ang = {k: np.degrees(raw[k] - neutral[k]) for k in raw}
     return ang, rate, c
 

@@ -1,0 +1,85 @@
+dataset:
+  root: Human gait and other movements - markers inertial sensors pressure insoles
+    force plates/researchdata
+  subject: P01
+  session: S01
+selection:
+  task: 2minWalk
+  trials:
+  - '01'
+  - '02'
+  - '03'
+  - '04'
+  leg: left
+  nodes:
+  - LF
+  - LS
+  - LT
+  - SA
+  joints:
+    ankle:
+    - LF
+    - LS
+    knee:
+    - LS
+    - LT
+    hip:
+    - LT
+    - SA
+  foot_node: LF
+  ref_align_node: LF
+sensor_map:
+  LF: LF
+  LS: LS
+  LT: LT
+  SA: SA
+bin_format:
+  fs_high: 256.0
+  fs_mag: 64.0
+  acc_counts_per_g: 2048.0
+  gyr_counts_per_dps: 16.384
+  gravity: 9.80665
+  mag_range_gauss: 500.0
+alignment:
+  min_corr: 0.5
+  refine: true
+segment:
+  activity_node: LF
+  smooth_s: 0.5
+  gyro_rms_threshold_dps: 60.0
+  min_gap_s: 1.0
+  pad_s: 0.5
+  max_segment_s: 150.0
+mag_calibration:
+  enabled: true
+  source_tasks:
+  - CalibrationTask
+  - TUG
+  - Sitting
+  source_trials:
+    CalibrationTask:
+    - '01'
+    - '02'
+    - '03'
+    TUG:
+    - '01'
+    - '02'
+    Sitting:
+    - '01'
+  method: ellipsoid
+  min_samples: 5000
+fusion:
+  algorithm: madgwick
+  beta: 0.05
+  beta_6dof: 0.033
+  joint_tau_s: 0.3
+  kp: 1.0
+  ki: 0.0
+  run_modes:
+  - 6dof
+  - 9dof
+  init_static_s: 0.5
+output:
+  dir: outputs
+  data_dir: data
+  angles_unit: deg

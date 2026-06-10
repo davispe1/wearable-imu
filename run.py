@@ -38,9 +38,10 @@ def validate(cfg, ctx):
     joints = list(cfg["selection"]["joints"])
     T0, tg, results, aligns, epoch, foot = (ctx[k] for k in
         ("T0", "tg", "results", "aligns", "epoch", "foot"))
+    side = "L" if cfg["selection"]["leg"].lower().startswith("l") else "R"
     # neutral from Static_01 markers
     try:
-        neutral = R.neutral_reference(align.c3d_path(root, subj, sess, "Static", "01"))
+        neutral = R.neutral_reference(align.c3d_path(root, subj, sess, "Static", "01"), side)
     except Exception as e:
         neutral = {j: 0.0 for j in joints}; print(f"(no static neutral: {e})")
 
@@ -52,9 +53,9 @@ def validate(cfg, ctx):
     refgrid = {j: np.full(len(tg), np.nan) for j in joints}   # reference on grid (display)
     joint_sign = {j: [] for j in joints}                       # anatomical sign for computed
     rom_win = {j: {"computed": [], "optical": []} for j in joints}  # ROM within mocap windows
-    for tr, r in zip(cfg["selection"]["trials"], aligns):
+    for tr, r in zip(ctx["trials"], aligns):
         c3dp = align.c3d_path(root, subj, sess, task, tr)
-        ref_ang, rate, c = R.window_reference(c3dp, neutral)
+        ref_ang, rate, c = R.window_reference(c3dp, neutral, side)
         M, _, _ = R.read_markers(c3dp)
         labels = R.c3d_events(c)        # reference step events (Zeni) — labels
         t_win = (epoch[foot] + r.bin_start_idx/fs) - T0          # optical time of window start
@@ -90,7 +91,7 @@ def validate(cfg, ctx):
             n = min(len(a), len(b))
             heading[mode].append(float(np.sqrt(np.nanmean((a[:n]-b[:n])**2))))
         # step-event timing: IMU foot strikes vs Zeni "Right Foot Strike" (labels)
-        ref_fs = np.array(labels.get("Right Foot Strike", []))
+        ref_fs = np.array(labels.get(f"{'Left' if side=='L' else 'Right'} Foot Strike", []))
         tg = ctx["tg"]
         imu_fs = tg[ev["foot_strike"][ev["foot_strike"] < len(tg)]] - t_win  # window-relative
         if len(ref_fs) and len(imu_fs):
@@ -306,10 +307,13 @@ def compute_core(cfg):
     # walking segment + inter-sensor refinement (reuse extract)
     foot_gyr_mag = np.linalg.norm(si[foot][1], axis=1)
     foot_acc_mag = np.linalg.norm(si[foot][0], axis=1)
+    trials = align.available_trials(cfg["dataset"]["root"], cfg["dataset"]["subject"],
+                                    cfg["dataset"]["session"], cfg["selection"]["task"],
+                                    cfg["selection"]["trials"])
     aligns = [align.align_trial(foot_acc_mag, foot_gyr_mag, fs, rtc[foot],
                                 cfg["dataset"]["root"], cfg["dataset"]["subject"],
                                 cfg["dataset"]["session"], cfg["selection"]["task"], tr,
-                                foot, skew[foot].skew_s) for tr in cfg["selection"]["trials"]]
+                                foot, skew[foot].skew_s) for tr in trials]
     anchors = [r.bin_start_idx for r in aligns]
     s0f, s1f, _ = extract.detect_walking_segment(si[foot][1], fs, cfg["segment"], anchors)
     T0 = epoch[foot] + s0f/fs; T1 = epoch[foot] + s1f/fs
@@ -383,7 +387,7 @@ def compute_core(cfg):
     for s, e, ang in turns:
         print(f"    turn t=[{tg[s]:.1f},{tg[e]:.1f}]s {ang:+.0f} deg")
 
-    ctx = dict(T0=T0, T1=T1, tg=tg, results=results, ev=ev, turns=turns,
+    ctx = dict(T0=T0, T1=T1, tg=tg, results=results, ev=ev, turns=turns, trials=trials,
                mask=mask, cad=cad, calib=calib, epoch=epoch, refine=refine,
                aligns=aligns, foot=foot, foot_seg_acc=foot_seg_acc,
                foot_seg_gyr=foot_seg_gyr, si=si, rtc=rtc, skew=skew, bd=bd)

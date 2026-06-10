@@ -49,6 +49,17 @@ def c3d_path(root, subject, session, task, trial):
                         f"{subject}_{session}_{task}_{trial}.c3d")
 
 
+def available_trials(root, subject, session, task, trials):
+    """Subset of `trials` whose sync_data CSV and c3d both exist (robust to subjects
+    with fewer repetitions, e.g. P02 has only 2minWalk_01/02)."""
+    out = []
+    for tr in trials:
+        if os.path.exists(sync_csv_path(root, subject, session, task, tr)) and \
+           os.path.exists(c3d_path(root, subject, session, task, tr)):
+            out.append(tr)
+    return out
+
+
 def c3d_capture_datetime(path: str) -> datetime:
     """Absolute optical capture start from TRIAL/DATECAPTURESTART + TIMECAPTURESTART."""
     tr = ezc3d.c3d(path)["parameters"]["TRIAL"]
