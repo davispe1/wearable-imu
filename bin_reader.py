@@ -18,11 +18,15 @@ LAYOUT (verified on P01 RF/RS, identical structure)
   Channel tags (one device clock — all share the page sample counter):
     0x13  accelerometer   256 Hz   +/-16 g     -> 2048 counts / g
     0x14  gyroscope       256 Hz   +/-2000 dps -> 16.384 counts / (deg/s)
-    0x18  (3rd 256 Hz channel; onboard-derived, NOT part of the raw contract)
-    0x15  magnetometer     64 Hz   (the only 64 Hz 3-axis channel)
-  Because accel/gyro/mag are interleaved in the same page stream and counted by
-  the same device clock, the magnetometer is time-aligned to accel/gyro *by
-  construction* — no cross-source or cross-rate mixing is ever required.
+    0x18  MAGNETOMETER    256 Hz   (3-axis; |B| ~1093 counts, 5%% stable over the
+                                    whole session, uncorrelated with gravity)
+    0x15  barometer/housekeeping  64 Hz  (packed non-int16x3 layout; NOT used for fusion)
+  IMPORTANT: the magnetometer is delivered at 256 Hz on the SAME interleaved record
+  stream as accel/gyro (verified by physics: stable vector magnitude while direction
+  rotates). It is therefore time-aligned to accel/gyro *by construction* and needs NO
+  64->256 upsampling. (The dataset documentation lists the mag as "64 Hz"; here it
+  arrives already at 256 Hz — its useful bandwidth may still be ~64 Hz, but each accel/
+  gyro sample has a co-timed mag sample.) The 64 Hz channel 0x15 is the barometer.
 
 This module returns **raw int16 counts** plus metadata. SI conversion, magnetometer
 calibration and 64->256 Hz upsampling are done downstream in ``extract.py`` so that
@@ -41,25 +45,24 @@ RECORDS_PER_PAGE = (PAGE_SIZE - PAGE_HEADER) // RECORD  # 63
 
 TAG_ACC = 0x13
 TAG_GYR = 0x14
-TAG_MAG = 0x15
-TAG_AUX = 0x18  # third 256 Hz channel, decoded for diagnostics only
-KNOWN_TAGS = (TAG_ACC, TAG_GYR, TAG_MAG, TAG_AUX)
+TAG_MAG = 0x18  # magnetometer, 256 Hz, sample-aligned with accel/gyro
+TAG_BARO = 0x15  # 64 Hz barometer/housekeeping (packed; not used for fusion)
+KNOWN_TAGS = (TAG_ACC, TAG_GYR, TAG_MAG, TAG_BARO)
 
-FS_HIGH = 256.0  # accel & gyro sampling rate (Hz)
-FS_MAG = 64.0    # magnetometer sampling rate (Hz)
+FS_HIGH = 256.0  # accel, gyro AND magnetometer sampling rate (Hz)
+FS_BARO = 64.0   # barometer/housekeeping channel rate (Hz)
 
 
 @dataclass
 class BinData:
     """BIN-native sensor streams (raw int16 counts) on the device clock."""
-    acc_raw: np.ndarray          # (Na, 3) int16, 256 Hz
-    gyr_raw: np.ndarray          # (Ng, 3) int16, 256 Hz
-    mag_raw: np.ndarray          # (Nm, 3) int16,  64 Hz
-    aux_raw: np.ndarray          # (Nx, 3) int16, 256 Hz (diagnostic)
+    acc_raw: np.ndarray          # (N, 3) int16, 256 Hz
+    gyr_raw: np.ndarray          # (N, 3) int16, 256 Hz
+    mag_raw: np.ndarray          # (N, 3) int16, 256 Hz (tag 0x18, sample-aligned)
+    baro_raw: np.ndarray         # (Nb, 3) int16, 64 Hz (tag 0x15; not used for fusion)
     fs_high: float = FS_HIGH
-    fs_mag: float = FS_MAG
-    # Time bases (seconds) derived from index/rate on the shared device clock.
-    # acc sample i -> i / fs_high ; mag sample j -> j / fs_mag (both start at t=0).
+    fs_baro: float = FS_BARO
+    # acc/gyro/mag all share the 256 Hz device clock: sample i -> i / fs_high.
     n_pages: int = 0
     invalid_records: int = 0
     total_records: int = 0
@@ -69,10 +72,6 @@ class BinData:
     @property
     def t_high(self) -> np.ndarray:
         return np.arange(len(self.acc_raw)) / self.fs_high
-
-    @property
-    def t_mag(self) -> np.ndarray:
-        return np.arange(len(self.mag_raw)) / self.fs_mag
 
     @property
     def duration_s(self) -> float:
@@ -132,21 +131,21 @@ def read_bin(path: str) -> BinData:
     acc = vals[tags == TAG_ACC]
     gyr = vals[tags == TAG_GYR]
     mag = vals[tags == TAG_MAG]
-    aux = vals[tags == TAG_AUX]
+    baro = vals[tags == TAG_BARO]
 
     bd = BinData(
         acc_raw=acc.astype(np.int16),
         gyr_raw=gyr.astype(np.int16),
         mag_raw=mag.astype(np.int16),
-        aux_raw=aux.astype(np.int16),
+        baro_raw=baro.astype(np.int16),
         n_pages=n_full_pages - 1,
         invalid_records=invalid,
         total_records=total_records,
         start_datetime=start_dt,
     )
-    # Continuity sanity: accel:mag rate ratio should be ~ FS_HIGH/FS_MAG = 4.
+    # Sanity: acc, gyro, mag are all 256 Hz -> counts should match closely.
     bd.meta["acc_mag_ratio"] = (len(acc) / len(mag)) if len(mag) else float("nan")
-    bd.meta["acc_aux_ratio"] = (len(acc) / len(aux)) if len(aux) else float("nan")
+    bd.meta["acc_baro_ratio"] = (len(acc) / len(baro)) if len(baro) else float("nan")
     return bd
 
 
@@ -174,8 +173,11 @@ if __name__ == "__main__":
     print(f"pages: {bd.n_pages}  records: {bd.total_records}  invalid: {bd.invalid_records} "
           f"({100*bd.invalid_records/bd.total_records:.3f}%)")
     print(f"acc: {bd.acc_raw.shape} @256Hz   gyr: {bd.gyr_raw.shape}   "
-          f"mag: {bd.mag_raw.shape} @64Hz   aux: {bd.aux_raw.shape}")
-    print(f"acc:mag ratio = {bd.meta['acc_mag_ratio']:.4f} (expect ~4.0)")
+          f"mag: {bd.mag_raw.shape} @256Hz   baro: {bd.baro_raw.shape} @64Hz")
+    print(f"acc:mag ratio = {bd.meta['acc_mag_ratio']:.4f} (expect ~1.0; both 256 Hz)")
+    magn = np.linalg.norm(bd.mag_raw.astype(float), axis=1)
+    print(f"mag |B| = {magn.mean():.0f} +/- {magn.std():.0f} counts "
+          f"({100*magn.std()/magn.mean():.1f}% — field magnitude, should be roughly stable)")
     print(f"duration: {bd.duration_s:.1f} s ({bd.duration_s/60:.2f} min)")
     # quick physical sanity: accel magnitude near 1 g at rest-ish (median over file)
     acc_ms2 = bd.acc_raw.astype(np.float64) * ACC_TO_MS2

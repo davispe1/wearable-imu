@@ -1,25 +1,31 @@
 """
-extract.py — Stage 1 of the pipeline. Reads the chosen trial's BIN sensors
-(READ-ONLY), converts to SI, upsamples the magnetometer 64->256 Hz on the BIN's
-own sample clock, delimits the walking segment, and writes small per-sensor CSV
-slices under ``data/``. Nothing downstream ever touches the original dataset.
+extract.py — Stage 1. Reads the chosen trial's BIN sensors (READ-ONLY), converts to
+SI, upsamples the magnetometer 64->256 Hz on each sensor's own BIN clock, delimits the
+walking segment, and writes small per-sensor CSV slices under ``data/``.
+
+MULTI-SENSOR TIMING (important)
+-------------------------------
+The 8 IMUs are SEPARATE BIN files with DIFFERENT RTC start times (spanning ~27 s) and
+slightly different sample counts — they are NOT sample-aligned to each other. Each
+sensor is therefore aligned INDEPENDENTLY to the optical clock via its own sync_data +
+RTC + a constant clock skew (estimated from long content-rich trials). We then express
+every sensor on a common **optical-time axis** so downstream stages can compute
+cross-sensor joint angles.
 
 CONTRACT NOTES
 --------------
-* Only BIN-native channels (accel 0x13, gyro 0x14, mag 0x15) are written. The 3rd
-  256 Hz channel (0x18) and ``sync_data`` are never written into the slices.
-* The magnetometer is upsampled onto the accelerometer/gyro 256 Hz grid by linear
-  interpolation in the *shared device-clock time base* (acc sample i -> i/256 s,
-  mag sample j -> j/64 s). No cross-source timing is used.
-* ``sync_data`` is used (inside align.py only) to calibrate the clock skew and to
-  locate the optical windows; it never enters the slices.
+* Fusion runs per-sensor on each sensor's BIN-native channels (accel 0x13, gyro 0x14,
+  mag 0x15 upsampled on the BIN clock). The common optical-time column is used only to
+  align ORIENTATION outputs across sensors / to the markers — never to resample the IMU
+  before fusion.
+* sync_data is used (inside align.py only) to calibrate per-sensor clock skew. It never
+  enters the slices or fusion.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
-from dataclasses import asdict
 import numpy as np
 import yaml
 
@@ -27,57 +33,38 @@ from bin_reader import read_bin
 import align
 
 
-# --------------------------------------------------------------------------- #
 def bin_path(root, subject, session, sensor):
     return os.path.join(root, f"{subject}_{session}", "RAW_DATA",
                         f"{subject}_{session}_{sensor}_Inertial_sensor.BIN")
 
 
 def to_si(bd, cfg):
-    """Convert raw int16 counts to SI. Returns dict of arrays on native rates."""
-    bf = cfg["bin_format"]
-    acc = bd.acc_raw.astype(np.float64) * (bf["gravity"] / bf["acc_counts_per_g"])  # m/s^2
-    gyr = bd.gyr_raw.astype(np.float64) * (np.pi / 180.0 / bf["gyr_counts_per_dps"])  # rad/s
-    mag = bd.mag_raw.astype(np.float64) * (bf["mag_range_gauss"] / 32768.0)          # Gauss (provisional)
-    return acc, gyr, mag
+    """accel -> m/s^2, gyro -> rad/s, mag -> raw counts (tag 0x18, 256 Hz).
 
-
-def upsample_mag_to_high(mag64, fs_mag, n_high, fs_high):
-    """Linear-interpolate 64 Hz magnetometer onto the 256 Hz accel/gyro grid.
-
-    Shared device clock: mag sample j is at t=j/fs_mag, target sample i at t=i/fs_high.
+    The magnetometer is left in raw counts: its absolute scale is uncertain and the
+    downstream ellipsoid calibration normalises it. All three streams are 256 Hz and
+    sample-aligned on the BIN clock (mag tag 0x18), so no upsampling is needed.
     """
-    t_mag = np.arange(len(mag64)) / fs_mag
-    t_high = np.arange(n_high) / fs_high
-    out = np.empty((n_high, 3))
-    for k in range(3):
-        out[:, k] = np.interp(t_high, t_mag, mag64[:, k])
-    return out
+    bf = cfg["bin_format"]
+    acc = bd.acc_raw.astype(np.float64) * (bf["gravity"] / bf["acc_counts_per_g"])
+    gyr = bd.gyr_raw.astype(np.float64) * (np.pi / 180.0 / bf["gyr_counts_per_dps"])
+    mag = bd.mag_raw.astype(np.float64)   # raw counts, 256 Hz
+    return acc, gyr, mag
 
 
 def moving_rms(x, win):
     win = max(1, int(win))
-    k = np.ones(win) / win
-    return np.sqrt(np.convolve(x * x, k, mode="same"))
+    return np.sqrt(np.convolve(x * x, np.ones(win) / win, mode="same"))
 
 
 def detect_walking_segment(foot_gyr, fs_high, seg_cfg, anchor_idxs):
-    """Delimit the continuous walking bout around the optical anchors from foot-IMU
-    activity. Threshold foot gyro RMS, bridge short sub-threshold gaps (stance),
-    pad, and return the contiguous run covering the anchors.
-    """
-    g = np.linalg.norm(foot_gyr, axis=1)                  # rad/s
+    g = np.linalg.norm(foot_gyr, axis=1)
     rms_deg = np.degrees(moving_rms(g, seg_cfg["smooth_s"] * fs_high))
     mask = rms_deg > seg_cfg["gyro_rms_threshold_dps"]
-
-    # bridge gaps shorter than min_gap_s
     bridge = int(seg_cfg["min_gap_s"] * fs_high)
     m = mask.copy()
-    i = 0
-    n = len(m)
-    # fill False runs shorter than `bridge` that are flanked by True
     false_start = None
-    for j in range(n):
+    for j in range(len(m)):
         if not m[j]:
             if false_start is None:
                 false_start = j
@@ -85,138 +72,136 @@ def detect_walking_segment(foot_gyr, fs_high, seg_cfg, anchor_idxs):
             if false_start is not None and (j - false_start) <= bridge and false_start > 0:
                 m[false_start:j] = True
             false_start = None
-
-    # find contiguous True runs, keep those covering >=1 anchor, merge their span
     runs = []
     j = 0
-    while j < n:
+    while j < len(m):
         if m[j]:
             s = j
-            while j < n and m[j]:
+            while j < len(m) and m[j]:
                 j += 1
             runs.append((s, j))
         else:
             j += 1
     covering = [r for r in runs if any(r[0] <= a < r[1] for a in anchor_idxs)]
     if not covering:
-        # fall back: the longest run
         covering = [max(runs, key=lambda r: r[1] - r[0])] if runs else [(anchor_idxs[0], anchor_idxs[-1] + 1)]
     s0 = min(r[0] for r in covering)
     s1 = max(r[1] for r in covering)
     pad = int(seg_cfg["pad_s"] * fs_high)
     s0 = max(0, s0 - pad)
-    s1 = min(n, s1 + pad)
-    # safety cap
+    s1 = min(len(m), s1 + pad)
     cap = int(seg_cfg["max_segment_s"] * fs_high)
     if s1 - s0 > cap:
         s1 = s0 + cap
     return int(s0), int(s1), runs
 
 
-# --------------------------------------------------------------------------- #
 def run_extract(cfg_path="config/default.yaml"):
     cfg = yaml.safe_load(open(cfg_path))
-    ds = cfg["dataset"]
-    root, subj, sess = ds["root"], ds["subject"], ds["session"]
-    sel = cfg["selection"]
-    nodes = sel["nodes"]
-    task = sel["task"]
-    fs_high = cfg["bin_format"]["fs_high"]
+    ds = cfg["dataset"]; root, subj, sess = ds["root"], ds["subject"], ds["session"]
+    sel = cfg["selection"]; nodes = sel["nodes"]; task = sel["task"]
+    fs_high = cfg["bin_format"]["fs_high"]; fs_mag = cfg["bin_format"]["fs_mag"]
+    foot = sel["foot_node"]
 
-    # 1) decode all node sensors
-    print("Decoding BIN sensors ...")
-    bdata, si = {}, {}
+    # 1) decode all node sensors + per-sensor SI + per-sensor optical skew
+    print("Decoding BIN sensors and aligning each to the optical clock ...")
+    bdata, si, skew, rtc = {}, {}, {}, {}
     for node in nodes:
         sensor = cfg["sensor_map"][node]
         bd = read_bin(bin_path(root, subj, sess, sensor))
         bdata[node] = bd
         si[node] = to_si(bd, cfg)
-        print(f"  {node}({sensor}): acc{bd.acc_raw.shape} mag{bd.mag_raw.shape} "
-              f"invalid={100*bd.invalid_records/bd.total_records:.3f}% dur={bd.duration_s/60:.1f}min")
+        rtc[node] = align.bin_rtc_datetime(bd.start_datetime)
+        gmag = np.linalg.norm(si[node][1], axis=1)
+        sk = align.estimate_session_skew(gmag, fs_high, rtc[node], root, subj, sess, node)
+        skew[node] = sk
+        print(f"  {node}({sensor}): rtc={bd.start_datetime} skew={sk.skew_s:+.2f}s "
+              f"acc{bd.acc_raw.shape} mag{bd.mag_raw.shape} invalid={100*bd.invalid_records/bd.total_records:.3f}%")
 
-    rtc = align.bin_rtc_datetime(bdata[nodes[0]].start_datetime)
+    # common optical-time epoch (origin = foot sensor's RTC). For sensor X:
+    #   epoch_offset_X = (rtc_X - rtc_foot) - skew_X ;  T_opt_X(i) = epoch_offset_X + i/fs
+    epoch = {node: (rtc[node] - rtc[foot]).total_seconds() - skew[node].skew_s for node in nodes}
 
-    # 2) calibrate session clock skew (sync_data used only inside align)
-    ref_node = sel["ref_align_node"]
-    ref_acc_mag = np.linalg.norm(si[ref_node][0], axis=1)
-    ref_gyr_mag = np.linalg.norm(si[ref_node][1], axis=1)
-    skew = align.estimate_session_skew(ref_gyr_mag, fs_high, rtc, root, subj, sess, ref_node)
-    print(f"\nSession clock skew = {skew.skew_s:+.2f} s ({skew.n_used} confident trials)")
-
-    # 3) locate the optical windows
+    # 2) locate optical windows in the FOOT sensor's timeline (foot drives segmentation)
+    foot_acc_mag = np.linalg.norm(si[foot][0], axis=1)
+    foot_gyr_mag = np.linalg.norm(si[foot][1], axis=1)
     aligns = []
     for trial in sel["trials"]:
-        res = align.align_trial(ref_acc_mag, ref_gyr_mag, fs_high, rtc,
-                                root, subj, sess, task, trial, ref_node, skew.skew_s)
+        res = align.align_trial(foot_acc_mag, foot_gyr_mag, fs_high, rtc[foot],
+                                root, subj, sess, task, trial, foot, skew[foot].skew_s)
         aligns.append((trial, res))
-        print(f"  {task}_{trial}: idx={res.bin_start_idx} t=[{res.t_start_s:.2f},{res.t_end_s:.2f}]s "
-              f"refine_corr={res.corr:.3f}")
 
-    # 4) delimit the walking segment from foot-IMU activity
-    foot = sel["foot_node"]
+    # 3) delimit the walking segment from foot activity (foot native indices)
     anchors = [r.bin_start_idx for _, r in aligns]
-    s0, s1, runs = detect_walking_segment(si[foot][1], fs_high, cfg["segment"], anchors)
-    print(f"\nWalking segment: idx[{s0},{s1}] t=[{s0/fs_high:.2f},{s1/fs_high:.2f}]s "
-          f"= {(s1-s0)/fs_high:.1f}s, covering {len(anchors)} optical anchors")
+    s0f, s1f, _ = detect_walking_segment(si[foot][1], fs_high, cfg["segment"], anchors)
+    # optical-time window of the segment (common axis, relative to segment start)
+    T0 = epoch[foot] + s0f / fs_high
+    T1 = epoch[foot] + s1f / fs_high
+    dur = T1 - T0
+    print(f"\nWalking segment (optical time): [{T0:.2f},{T1:.2f}]s = {dur:.1f}s, "
+          f"covering {len(anchors)} optical anchors")
 
-    # 5) write SI slices (segment only), mag upsampled on the BIN grid
+    # 4) common 256 Hz optical grid; write per-sensor slices on each sensor's NATIVE
+    #    samples covering the window, carrying a common t_opt column for downstream.
     out_dir = os.path.join(cfg["output"]["data_dir"], f"{subj}_{sess}_{task}")
     os.makedirs(out_dir, exist_ok=True)
-    n_high = s1 - s0
-    t_seg = np.arange(n_high) / fs_high
+    sensor_slice_info = {}
     for node in nodes:
-        acc, gyr, mag64 = si[node]
-        mag_hi = upsample_mag_to_high(mag64, cfg["bin_format"]["fs_mag"], len(acc), fs_high)
-        sl = slice(s0, s1)
-        arr = np.column_stack([
-            t_seg,
-            acc[sl], gyr[sl], mag_hi[sl],
-        ])
-        header = "t_s,ax,ay,az,gx,gy,gz,mx,my,mz"
-        path = os.path.join(out_dir, f"{node}.csv")
-        np.savetxt(path, arr, delimiter=",", header=header, comments="",
-                   fmt="%.7g")
+        acc, gyr, mag = si[node]      # all 256 Hz, sample-aligned (mag tag 0x18)
+        # native index range covering [T0,T1] for this sensor
+        i0 = int(round((T0 - epoch[node]) * fs_high))
+        i1 = int(round((T1 - epoch[node]) * fs_high))
+        i0 = max(0, i0); i1 = min(len(acc), i1)
+        idx = np.arange(i0, i1)
+        t_native = idx / fs_high
+        t_opt = (epoch[node] + idx / fs_high) - T0    # common axis, 0 at segment start
+        arr = np.column_stack([t_native, t_opt, acc[i0:i1], gyr[i0:i1], mag[i0:i1]])
+        header = "t_native_s,t_opt_s,ax,ay,az,gx,gy,gz,mx,my,mz"
+        np.savetxt(os.path.join(out_dir, f"{node}.csv"), arr, delimiter=",",
+                   header=header, comments="", fmt="%.7g")
+        sensor_slice_info[node] = {"i0": i0, "i1": i1, "n": int(i1 - i0),
+                                   "epoch_offset_s": epoch[node]}
     print(f"Wrote {len(nodes)} per-sensor slices -> {out_dir}")
 
-    # 6) extract report (optical windows expressed relative to segment start too)
+    # 5) report
     report = {
         "subject": subj, "session": sess, "task": task,
-        "bin_rtc_start": bdata[nodes[0]].start_datetime,
-        "fs_high": fs_high, "fs_mag": cfg["bin_format"]["fs_mag"],
-        "decode": {node: {"acc_n": int(bdata[node].acc_raw.shape[0]),
-                          "mag_n": int(bdata[node].mag_raw.shape[0]),
-                          "invalid_pct": 100*bdata[node].invalid_records/bdata[node].total_records,
-                          "acc_mag_ratio": bdata[node].meta["acc_mag_ratio"]}
-                   for node in nodes},
-        "clock_skew_s": skew.skew_s,
-        "skew_detail": [{"trial": d[0], "pred_s": d[1], "loc_s": d[2], "corr": d[3], "skew_s": d[4]}
-                        for d in skew.detail],
+        "fs_high": fs_high, "fs_mag": fs_mag,
+        "common_time": "t_opt_s column: optical clock, 0 at segment start, shared by all sensors",
+        "sensors": {node: {
+            "sensor": cfg["sensor_map"][node],
+            "rtc": bdata[node].start_datetime,
+            "skew_s": skew[node].skew_s,
+            "skew_confident": [{"trial": d[0], "corr": d[3], "skew_s": d[4]}
+                               for d in skew[node].detail if d[3] >= 0.6],
+            "epoch_offset_s": epoch[node],
+            "slice": sensor_slice_info[node],
+            "invalid_pct": 100*bdata[node].invalid_records/bdata[node].total_records,
+            "acc_mag_ratio": bdata[node].meta["acc_mag_ratio"],
+        } for node in nodes},
+        "walking_segment": {
+            "t0_opt_s": T0, "t1_opt_s": T1, "duration_s": dur,
+            "foot_native_idx": [s0f, s1f],
+            "delimiting": {"method": "foot-IMU gyro RMS threshold + gap-bridge + pad",
+                           "activity_node": foot,
+                           "threshold_dps": cfg["segment"]["gyro_rms_threshold_dps"],
+                           "smooth_s": cfg["segment"]["smooth_s"],
+                           "min_gap_s": cfg["segment"]["min_gap_s"],
+                           "pad_s": cfg["segment"]["pad_s"]},
+        },
         "optical_windows": [
             {"trial": t,
-             "bin_start_idx": r.bin_start_idx, "bin_end_idx": r.bin_end_idx,
-             "t_start_s": r.t_start_s, "t_end_s": r.t_end_s,
-             "rel_start_idx": r.bin_start_idx - s0, "rel_end_idx": r.bin_end_idx - s0,
-             "n_sync": r.n_sync, "refine_corr": r.corr, "refine_shift_s": r.refine_shift_s}
+             "foot_bin_idx": [r.bin_start_idx, r.bin_end_idx],
+             "t_opt_start_s": (epoch[foot] + r.bin_start_idx/fs_high) - T0,
+             "t_opt_end_s": (epoch[foot] + r.bin_end_idx/fs_high) - T0,
+             "n_sync": r.n_sync, "refine_corr": r.corr}
             for t, r in aligns],
-        "walking_segment": {
-            "bin_start_idx": s0, "bin_end_idx": s1,
-            "t_start_s": s0/fs_high, "t_end_s": s1/fs_high,
-            "duration_s": (s1-s0)/fs_high,
-            "delimiting": {
-                "method": "foot-IMU gyro RMS threshold + gap-bridge + pad, run covering optical anchors",
-                "activity_node": cfg["segment"]["activity_node"],
-                "threshold_dps": cfg["segment"]["gyro_rms_threshold_dps"],
-                "smooth_s": cfg["segment"]["smooth_s"],
-                "min_gap_s": cfg["segment"]["min_gap_s"],
-                "pad_s": cfg["segment"]["pad_s"],
-            }},
-        "slice_columns": "t_s,ax,ay,az(m/s^2),gx,gy,gz(rad/s),mx,my,mz(Gauss,uncalibrated,upsampled 64->256)",
-        "mag_calibration": "NOT applied in extract; fitted from varied-orientation tasks and applied in kincore",
+        "slice_columns": "t_native_s,t_opt_s,ax..az(m/s^2),gx..gz(rad/s),mx..mz(raw counts,256Hz tag0x18,uncalibrated)",
+        "mag_calibration": "NOT applied here; fitted/applied in kincore",
         "out_dir": out_dir,
     }
-    rpath = os.path.join(out_dir, "extract_report.json")
-    json.dump(report, open(rpath, "w"), indent=2)
-    print(f"Wrote report -> {rpath}")
+    json.dump(report, open(os.path.join(out_dir, "extract_report.json"), "w"), indent=2)
+    print(f"Wrote report -> {os.path.join(out_dir, 'extract_report.json')}")
     return report
 
 
