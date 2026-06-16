@@ -1,11 +1,22 @@
-# Geneva dataset (READ-ONLY, never version-controlled)
+# --- Datasets & recordings (NEVER version-controlled / uploaded) ---
+# Geneva dataset (READ-ONLY source)
 Human gait and other movements - markers inertial sensors pressure insoles force plates/
+# Recordings & dataset slices under data/ — keep only the placeholders
+data/*
+!data/.gitkeep
+!data/README.md
+!data/schema_example.csv
 
-# Pipeline-generated data and outputs
-data/
+# Pipeline-generated outputs
 outputs/
 
-# Python
+# App session store (default lives in the user's home; ignore any local copy too)
+GaitApp/
+
+# Generated docs artifact
+docs/Gait_Kinematics_Methods.docx
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -15,7 +26,7 @@ env/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# OS / editor
+# --- OS / editor ---
 .DS_Store
 Thumbs.db
 *.swp

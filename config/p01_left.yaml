@@ -80,3 +80,16 @@ output:
   dir: outputs
   data_dir: data
   angles_unit: deg
+visualization:
+  fps: 60
+  default_speed: 1.0
+  loop: true
+  forward_translation: true
+  step_length_frac: 0.45
+  anthropometry:
+    height_mm: null
+    thigh_frac: 0.245
+    shank_frac: 0.246
+    foot_frac: 0.152
+    pelvis_frac: 0.100
+    trunk_frac: 0.288

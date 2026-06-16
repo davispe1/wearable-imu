@@ -1,4 +1,4 @@
-# Mythos MECH — Methods Manual
+# Gait Kinematics — Methods Manual
 
 Technical reference for the IMU gait pipeline, ordered by pipeline stage. Every parameter
 below is the real value in the source (file + function cited). Equations are written as

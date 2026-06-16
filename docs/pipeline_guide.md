@@ -1,4 +1,4 @@
-# Mythos MECH — Pipeline Guide
+# Gait Kinematics — Pipeline Guide
 
 > **See also:** [`methods.md`](methods.md) — full per-stage technical/methods manual
 > (algorithms, equations, parameters); [`user_guide.md`](user_guide.md) — usage manual
@@ -45,7 +45,7 @@ READ-ONLY DATASET (Pxx/RAW_DATA/*.BIN, *.c3d ; Pxx/SYNC_DATA/*.csv)
         │                            markers ONLY here); sub-sample RMSE; optical heading
         │                            arbiter; Zeni gait events
         │
-   visualize.py      pyqtgraph 3D stick figure + 2D overlays (--save -> PNG dashboard)
+   visualize.py      single window: lateral mannequin + synced gait panels (--save -> PNGs)
    selftest.py       RAW-DATA CONTRACT proof
 ```
 
@@ -62,7 +62,7 @@ READ-ONLY DATASET (Pxx/RAW_DATA/*.BIN, *.c3d ; Pxx/SYNC_DATA/*.csv)
 | `kincore/` | Self-contained kinematic core (calibration, fusion, angles, gait, segment). Sees IMU only. |
 | `validation/reference.py` | Marker-derived reference angles, RMSE, heading arbiter, Zeni events. The only marker reader. |
 | `run.py` | Orchestrator: `compute_core` (IMU-only) + `validate` (markers) + `write_outputs`. |
-| `visualize.py` | 3D animated right-leg stick figure + 2D dashboard (`--save` for PNG). |
+| `visualize.py` | Single interactive window: lateral mannequin (clean sagittal flexion) + synced gait panels with a sweeping time-cursor (`--save` for PNG stills, `--shot` for a window screenshot). |
 | `selftest.py` | Proves the core is a pure function of the IMU. |
 | `config/default.yaml` | All selection + parameters. |
 
@@ -81,8 +81,8 @@ python run.py
 #      outputs/P01_S01_2minWalk_summary.json    (RMSE, ROM, cadence, caveats)
 
 # 3. Visualization
-python visualize.py --save          # headless: writes _dashboard.png + _stickfigure.png
-python visualize.py                 # interactive pyqtgraph 3D stick figure
+python visualize.py                 # interactive single window (mannequin + gait panels)
+python visualize.py --save          # headless stills: _dashboard + _stickfigure + _placement
 
 # 4. Contract selftest
 python selftest.py                  # PASS = core independent of markers/labels

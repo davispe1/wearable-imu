@@ -1,12 +1,16 @@
-# Core (required)
+# Gait Kinematics — dependencies.
+
+# --- gaitlib library (required) ---
 numpy>=1.25
 scipy>=1.10
-pandas>=2.0
-ezc3d>=1.5
-pyyaml>=6.0
-matplotlib>=3.7
 
-# Interactive 3D visualization (optional; --save dashboard works without these)
+# --- Viewer app (app/main.py): 2D graphs only, no 3D/OpenGL ---
 pyqtgraph>=0.13
-PyOpenGL>=3.1
 PyQt5>=5.15
+pyyaml>=6.0          # reads config/app.yaml
+
+# --- Research/dataset pipeline (pipeline/, optional; needs the Geneva dataset) ---
+ezc3d>=1.5           # read optical c3d for validation
+pandas>=2.0
+matplotlib>=3.7      # research plots / pipeline visualize.py --save
+openpyxl>=3.1        # subject stature from the dataset's Inputs sheet (optional)

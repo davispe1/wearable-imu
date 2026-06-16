@@ -1,4 +1,4 @@
-# Mythos MECH — pipeline configuration (everything config-driven).
+# Gait Kinematics — pipeline configuration (everything config-driven).
 # Default: P01 / 2minWalk / RIGHT leg / nodes RF,RS,RT,SA.
 
 dataset:
@@ -74,3 +74,20 @@ output:
   dir: "outputs"
   data_dir: "data"
   angles_unit: "deg"
+
+visualization:
+  # Single interactive window: lateral mannequin (left) + synchronised gait panels (right).
+  fps: 60                    # render rate of the animation timer
+  default_speed: 1.0         # initial playback speed (real-time = 1.0); UI offers 0.25/0.5/1
+  loop: true                 # restart at bout end
+  forward_translation: true  # procedurally walk the figure across the view (cadence x step)
+  step_length_frac: 0.45     # forward step length as a fraction of stature (procedural walk)
+  anthropometry:
+    # Segment lengths are scaled from the subject's stature (Winter ratios). If height_mm is
+    # null the value is read from the dataset's "Inputs" sheet by subject; else it overrides.
+    height_mm: null
+    thigh_frac: 0.245        # hip->knee  (fraction of stature)
+    shank_frac: 0.246        # knee->ankle
+    foot_frac: 0.152         # ankle->toe
+    pelvis_frac: 0.100       # hip->pelvis top
+    trunk_frac: 0.288        # pelvis->shoulder (trunk stub)
