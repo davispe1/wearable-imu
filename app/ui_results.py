@@ -55,13 +55,17 @@ class ResultsView(QtWidgets.QWidget):
         self.btn_csv = QtWidgets.QPushButton("Export CSV")
         self.btn_json = QtWidgets.QPushButton("Export JSON")
         self.btn_rep = QtWidgets.QPushButton("Export report (.txt)")
-        for b in (self.btn_csv, self.btn_json, self.btn_rep):
+        self.btn_o3d = QtWidgets.QPushButton("Export for Open3D")
+        self.btn_o3d.setToolTip("Write gait_frames.csv + meta.json for the external Open3D "
+                                "viewer (Open3D is not bundled with this app).")
+        for b in (self.btn_csv, self.btn_json, self.btn_rep, self.btn_o3d):
             row.addWidget(b)
         v.addLayout(row)
         self.status = QtWidgets.QLabel(""); self.status.setStyleSheet("color:#456"); v.addWidget(self.status)
         self.btn_csv.clicked.connect(lambda: self.export("csv"))
         self.btn_json.clicked.connect(lambda: self.export("json"))
         self.btn_rep.clicked.connect(lambda: self.export("report"))
+        self.btn_o3d.clicked.connect(self.export_open3d)
 
     # -- load ---------------------------------------------------------------- #
     def load(self, sdir):
@@ -186,3 +190,39 @@ class ResultsView(QtWidgets.QWidget):
                         f"  steady strides {g.get('n_steady_strides','?')}  "
                         f"strikes {g.get('n_foot_strikes','?')}  turns {self.ls.summary.get('n_turnarounds',0)}\n")
         self.status.setText(f"exported → {os.path.relpath(p, self.ls.sdir)}")
+
+    def export_open3d(self):
+        """Write the external Open3D viewer's inputs (gait_frames.csv + meta.json).
+
+        Uses the *gaitlib* sagittal flexion stored in the results timeseries
+        (``<joint>_deg`` = ``results.joints[<joint>]["flexion"]``) for the single leg —
+        not the 3D orientation. Open3D is not a dependency; this only writes the files.
+        """
+        if not self.ls:
+            QtWidgets.QMessageBox.warning(self, "Export for Open3D",
+                                          "Load a session first (Sessions tab).")
+            return
+        try:
+            from pipeline.export_open3d import write_open3d_inputs, infer_leg
+            names = self.ls.d.dtype.names
+            angles = {j: np.asarray(self.ls.d[f"{j}_deg"], float)
+                      for j in ("hip", "knee", "ankle") if f"{j}_deg" in names}
+            leg = infer_leg(side=self.ls.meta.get("side"),
+                            foot_node=self.ls.meta.get("foot_node"))
+            out_dir = os.path.join(self.ls.sdir, "results")
+            frames, meta_p, meta = write_open3d_inputs(
+                out_dir, self.ls.t, angles, leg=leg, fs=self.ls.fs,
+                height_m=self.ls.meta.get("height_m"))
+        except Exception as e:
+            self.status.setText(f"Export for Open3D failed: {e}")
+            QtWidgets.QMessageBox.critical(
+                self, "Export for Open3D failed", f"{type(e).__name__}: {e}")
+            return
+        frames_abs, meta_abs = os.path.abspath(frames), os.path.abspath(meta_p)
+        self.status.setText(
+            f"exported → {frames_abs} + meta.json "
+            f"({meta['n_frames']} frames, {leg} leg) for Open3D")
+        QtWidgets.QMessageBox.information(
+            self, "Export for Open3D",
+            f"Wrote Open3D viewer inputs ({meta['n_frames']} frames, {leg} leg):\n\n"
+            f"{frames_abs}\n{meta_abs}")

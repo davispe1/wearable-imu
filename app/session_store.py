@@ -233,9 +233,80 @@ def list_sessions(cfg):
 
 
 def load_session_streams(sdir):
-    """Load a session's raw IMU back into {node: {t, acc, gyr, mag}} + metadata."""
-    streams = parse_imu_csv(os.path.join(sdir, "raw", "data.csv"))
-    return streams, read_metadata(sdir)
+    """Load a session's raw IMU back into {node: {t, acc, gyr, mag}} + metadata.
+
+    Accepts BOTH on-disk layouts:
+
+      1. App-store layout: ``<sdir>/raw/data.csv`` (canonical combined long-format CSV
+         written by :func:`create_session`). Used as-is when present.
+      2. Per-node layout: per-node CSVs sitting directly in ``<sdir>/`` whose filenames are
+         the node ids (e.g. ``RF.csv``, ``RS.csv``, ``RT.csv``, ``SA.csv``) with columns
+         ``t_native_s,t_opt_s,ax..mz``. This is the format the bundled Geneva slices already
+         use and what the real 4-node hardware will produce. No ``session.json`` is required;
+         side/joints are inferred the same way as for the Geneva slices.
+    """
+    raw = os.path.join(sdir, "raw", "data.csv")
+    if os.path.exists(raw):
+        return parse_imu_csv(raw), read_metadata(sdir)
+
+    streams = _load_per_node_dir(sdir)
+    if not streams:
+        raise FileNotFoundError(
+            f"no IMU data found in {sdir!r}: expected either raw/data.csv (app-store layout) "
+            f"or per-node CSVs named after their node ids (e.g. RF.csv, RS.csv, RT.csv, SA.csv)")
+    meta = read_metadata(sdir) or _infer_per_node_metadata(sdir, streams)
+    return streams, meta
+
+
+def _load_per_node_dir(sdir):
+    """Load per-node CSVs sitting directly in ``sdir`` -> {node: {t, acc, gyr, mag}}.
+
+    A file is treated as a node stream when its stem is a known node id; if none match
+    (generic/unknown ids) every ``*.csv`` that parses is taken, its stem the node id.
+    """
+    if not os.path.isdir(sdir):
+        return {}
+    csvs = [f for f in sorted(os.listdir(sdir))
+            if f.lower().endswith(".csv") and os.path.isfile(os.path.join(sdir, f))]
+    known = [f for f in csvs if os.path.splitext(f)[0] in NODE_INFO]
+    candidates = known or csvs
+    streams = {}
+    for fn in candidates:
+        node = os.path.splitext(fn)[0]
+        try:
+            s = parse_imu_csv(os.path.join(sdir, fn), node_hint=node)
+        except Exception:
+            continue  # not an IMU CSV (e.g. a stray export) — skip it
+        streams.update(s)
+    return streams
+
+
+def _infer_per_node_metadata(sdir, streams):
+    """Build session metadata for the per-node layout (no session.json on disk).
+
+    Mirrors the metadata :func:`create_session` records, inferring topology/side/joints the
+    same way the app does for the bundled Geneva slices."""
+    nodes = list(streams.keys())
+    topo = default_joint_topology(nodes)
+    foot = topo["foot"] or nodes[0]
+    tfoot = streams[foot]["t"]
+    fs = float(1.0 / np.median(np.diff(tfoot))) if len(tfoot) > 1 else 0.0
+    dur = float(min(streams[n]["t"][-1] - streams[n]["t"][0] for n in nodes))
+    sid = os.path.basename(os.path.normpath(sdir))
+    subject = sid.split("_")[0]
+    height_mm = _read_height_mm(subject)
+    return {
+        "session_id": sid, "subject": subject, "date": _read_slice_date(sdir), "task": "",
+        "side": topo["side"], "nodes": nodes,
+        "node_labels": {n: NODE_INFO.get(n, (n, ""))[0] for n in nodes},
+        "joints": topo["joints"], "foot_node": topo["foot"], "pelvis_node": topo["pelvis"],
+        "fs_hz": round(fs, 3), "duration_s": round(dur, 2),
+        "height_m": (height_mm / 1000.0) if height_mm else None,
+        "n_samples": {n: int(len(streams[n]["t"])) for n in nodes},
+        "source_files": [f"{n}.csv (per-node)" for n in nodes],
+        "has_results": os.path.exists(os.path.join(sdir, "results", "summary.json")),
+        "path": sdir,
+    }
 
 
 def results_dir(sdir):

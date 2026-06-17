@@ -60,6 +60,29 @@ bundled slice, if present):
 python gaitlib/tests/test_geneva_regression.py
 ```
 
+## Export for the Open3D viewer (separate step)
+
+A processed session can be exported for an **external Open3D viewer** (a separate project).
+**Open3D is not a dependency of this repo** — this is a standalone export step that only reads
+results gaitlib already produced and writes two small files into the session's `results/`
+folder:
+
+- `gait_frames.csv` — `t_s, hip_deg, knee_deg, ankle_deg`, one row per sample: the clean
+  **sagittal flexion** angles from gaitlib (`results.joints[<joint>]["flexion"]`, *not* 3D
+  orientation), for a single leg (the one in the mounting config).
+- `meta.json` — `{"leg", "fs", "segment_lengths_m": {pelvis, thigh, shank, foot}}`; segment
+  lengths are estimated from the subject's stature via Winter's body-segment proportions (a
+  default stature is used and noted in the file when none is available).
+
+```bash
+python -m pipeline.export_open3d <session_dir>      # or: Results → "Export for Open3D"
+```
+
+The `gait_frames` schema is also the **live-streaming contract**: the same per-frame record
+(`t_s, hip_deg, knee_deg, ankle_deg`) can later be streamed over a socket from live hardware
+instead of written to a file — the viewer's frame schema is identical, so nothing on the
+viewer side changes.
+
 ---
 
 ## Input schema (the 9-DOF raw-data contract)
@@ -68,11 +91,13 @@ Per **sample** the firmware/hub must provide:
 
 | field | meaning | units |
 |---|---|---|
-| `timestamp` | monotonic per node, 0 at start | s |
+| `timestamp` | time in seconds; all nodes MUST share a common timebase synchronized by the hub (≤ 1 ms alignment). Do not use per-node independent clocks. | s |
 | `node_id` | sensor/segment id (must match the mounting config) | — |
 | `ax, ay, az` | linear acceleration, sensor frame | m/s² |
 | `gx, gy, gz` | angular velocity, sensor frame | rad/s |
 | `mx, my, mz` | magnetometer, sensor frame | any consistent units (calibration normalises) |
+
+> **Note:** The hub is responsible for timestamping and aligning streams before passing them to gaitlib. If nodes have independent clocks, gaitlib results will be wrong.
 
 As a CSV (combined, long format):
 
@@ -152,7 +177,8 @@ app/            the viewer app (depends on gaitlib)
 
 pipeline/       research/dataset pipeline (needs the Geneva dataset; optional)
   run.py, extract.py, align.py, bin_reader.py, fusion_check.py, selftest.py,
-  visualize.py, validation/, adapters/, tools/
+  visualize.py, export_open3d.py, validation/, adapters/, tools/
+  (export_open3d.py: standalone Open3D-viewer export; needs no dataset and no open3d)
 
 config/         app.yaml (app) + default/p01/p02 yaml (research pipeline)
 docs/           methods + guides (+ figures)

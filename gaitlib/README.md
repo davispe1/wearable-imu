@@ -52,11 +52,13 @@ sockets, pins, or registers. Those belong to the acquisition layer that *produce
 
 | field | meaning | units |
 |---|---|---|
-| `timestamp` | monotonic per node, any 0-origin | s |
+| `timestamp` | time in seconds; all nodes MUST share a common timebase synchronized by the hub (≤ 1 ms alignment). Do not use per-node independent clocks. | s |
 | `node_id` | sensor id; must match a key in the mounting config | — |
 | `ax, ay, az` | linear acceleration, sensor frame | m/s² |
 | `gx, gy, gz` | angular velocity, sensor frame | rad/s |
 | `mx, my, mz` | magnetometer, sensor frame | any consistent units (calibration normalises scale + bias) |
+
+> **Note:** The hub is responsible for timestamping and aligning streams before passing them to gaitlib. If nodes have independent clocks, gaitlib results will be wrong.
 
 This is the contract the firmware/hub must satisfy. `compute` accepts it in three equivalent
 forms (see `gaitlib/rawdata.py`):
