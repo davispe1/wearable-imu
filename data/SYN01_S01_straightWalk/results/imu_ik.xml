@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  OpenSense IMU Inverse Kinematics setup for SYN01_S01_straightWalk (OpenSim 4.5).
+  Run imu_placer.xml first (writes SYN01_S01_straightWalk_calibrated.osim), then load this file:
+  Tools > IMU Inverse Kinematics... > load this file, or `opensense -IK imu_ik.xml` from this folder.
+  Generated from opensim/setups/imu_ik.xml — see opensim/README.md and docs/opensim_steps.md.
+-->
+<OpenSimDocument Version="40500">
+    <IMUInverseKinematicsTool name="IMU_IK">
+        <model_file>SYN01_S01_straightWalk_calibrated.osim</model_file>
+        <orientations_file>SYN01_S01_straightWalk_orientations.sto</orientations_file>
+
+        <!-- MUST match imu_placer.xml. -->
+        <sensor_to_opensim_rotations>-1.5707963267948966 0 0</sensor_to_opensim_rotations>
+
+        <!-- Full 13.49 s synthetic trial. -->
+        <time_range>0 13.49</time_range>
+
+        <accuracy>1.0000000000000001e-04</accuracy>
+        <constraint_weight>20</constraint_weight>
+        <report_errors>true</report_errors>
+        <output_motion_file>SYN01_S01_straightWalk_ik.mot</output_motion_file>
+    </IMUInverseKinematicsTool>
+</OpenSimDocument>

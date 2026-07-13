@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  OpenSense IMU Placer setup (OpenSim 4.5).
+
+  Calibrates the Rajagopal-with-IMUs model to the subject: it reads the STATIC-pose
+  orientation table (the *_calibration.sto written by `python -m opensim_export.to_sto`),
+  aligns the model heading using the base IMU, registers each sensor's orientation to its
+  body, and writes a calibrated .osim.
+
+  Replace the SUBJECT_* placeholders with your session id. Property names match
+  OpenSim::IMUPlacer (sdk/include/OpenSim/Simulation/OpenSense/IMUPlacer.h).
+-->
+<OpenSimDocument Version="40500">
+    <IMUPlacer name="IMU_Placer">
+        <!-- Rajagopal model carrying IMU frames (pelvis_imu, femur_*_imu, tibia_*_imu,
+             calcn_*_imu). See opensim/README.md for where to get it. -->
+        <model_file>Rajagopal_2015.osim</model_file>
+
+        <!-- Base IMU whose measured heading orients the whole model. Pelvis is the root
+             segment of the rig, so it is the base. -->
+        <base_imu_label>pelvis_imu</base_imu_label>
+
+        <!-- Axis of the base IMU treated as the heading (forward) reference. -->
+        <base_heading_axis>z</base_heading_axis>
+
+        <!-- PLACEHOLDER — tune to your hardware. Rotation (radians, X Y Z, body-fixed) from
+             the IMU logging/world frame into the OpenSim ground frame. VQF reports a Z-up
+             world; OpenSim ground is Y-up, so -pi/2 about X (= -1.5708 0 0) is the default. -->
+        <sensor_to_opensim_rotations>-1.5707963267948966 0 0</sensor_to_opensim_rotations>
+
+        <!-- Static-pose orientations: the single-row *_calibration.sto from to_sto. -->
+        <orientation_file_for_calibration>SUBJECT_calibration.sto</orientation_file_for_calibration>
+
+        <!-- Calibrated model written by this tool (input to the IMU IK step). -->
+        <output_model_file>SUBJECT_calibrated.osim</output_model_file>
+    </IMUPlacer>
+</OpenSimDocument>

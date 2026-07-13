@@ -1,0 +1,219 @@
+{
+  "subject": "P04",
+  "session": "S01",
+  "task": "2minWalk",
+  "fs_high": 256.0,
+  "fs_mag": 64.0,
+  "common_time": "t_opt_s column: optical clock, 0 at segment start, shared by all sensors",
+  "sensors": {
+    "RF": {
+      "sensor": "RF",
+      "rtc": "2021-06-25 15:44:28",
+      "skew_s": -12.377999999999929,
+      "skew_confident": [
+        {
+          "trial": "CalibrationTask_02",
+          "corr": 0.7397314938648781,
+          "skew_s": -11.781999999999925
+        },
+        {
+          "trial": "CalibrationTask_03",
+          "corr": 0.8737795701825317,
+          "skew_s": -12.377999999999929
+        },
+        {
+          "trial": "CalibrationTask_04",
+          "corr": 0.890995574348344,
+          "skew_s": -12.427999999999884
+        },
+        {
+          "trial": "CalibrationTask_05",
+          "corr": 0.6069746065517789,
+          "skew_s": -13.836999999999989
+        },
+        {
+          "trial": "Sitting_01",
+          "corr": 0.6356562517527515,
+          "skew_s": -12.243999999999915
+        }
+      ],
+      "epoch_offset_s": 12.377999999999929,
+      "intersensor_refine": {
+        "lag_ms": 0.0,
+        "corr": 1.0,
+        "applied": true
+      },
+      "slice": {
+        "i0": 673956,
+        "i1": 708706,
+        "n": 34750,
+        "epoch_offset_s": 12.377999999999929
+      },
+      "invalid_pct": 0.0019801434923357617,
+      "acc_mag_ratio": 1.0
+    },
+    "RS": {
+      "sensor": "RS",
+      "rtc": "2021-06-25 15:44:15",
+      "skew_s": -22.862999999999943,
+      "skew_confident": [
+        {
+          "trial": "CalibrationTask_02",
+          "corr": 0.8904821165992403,
+          "skew_s": -22.291999999999916
+        },
+        {
+          "trial": "CalibrationTask_03",
+          "corr": 0.8909657814984692,
+          "skew_s": -22.847999999999956
+        },
+        {
+          "trial": "CalibrationTask_04",
+          "corr": 0.8770009375760734,
+          "skew_s": -22.87799999999993
+        },
+        {
+          "trial": "Sitting_01",
+          "corr": 0.6923342370713753,
+          "skew_s": -22.903999999999996
+        }
+      ],
+      "epoch_offset_s": 9.796593749999943,
+      "intersensor_refine": {
+        "lag_ms": 66.40625,
+        "corr": 0.5826243087317536,
+        "applied": true
+      },
+      "slice": {
+        "i0": 674617,
+        "i1": 709367,
+        "n": 34750,
+        "epoch_offset_s": 9.796593749999943
+      },
+      "invalid_pct": 0.0019820365549479374,
+      "acc_mag_ratio": 1.0000010065232774
+    },
+    "RT": {
+      "sensor": "RT",
+      "rtc": "2021-06-25 15:44:19",
+      "skew_s": -11.289999999999964,
+      "skew_confident": [
+        {
+          "trial": "CalibrationTask_02",
+          "corr": 0.8206811142075162,
+          "skew_s": -10.991999999999962
+        },
+        {
+          "trial": "CalibrationTask_03",
+          "corr": 0.8408554486077322,
+          "skew_s": -11.587999999999965
+        },
+        {
+          "trial": "CalibrationTask_04",
+          "corr": 0.8264774890574048,
+          "skew_s": -11.607999999999947
+        },
+        {
+          "trial": "Sitting_01",
+          "corr": 0.8094144804878871,
+          "skew_s": -10.403999999999996
+        }
+      ],
+      "epoch_offset_s": 2.5282812499999636,
+      "intersensor_refine": {
+        "lag_ms": -238.28125,
+        "corr": 0.5839465670093035,
+        "applied": true
+      },
+      "slice": {
+        "i0": 676478,
+        "i1": 711228,
+        "n": 34750,
+        "epoch_offset_s": 2.5282812499999636
+      },
+      "invalid_pct": 0.0019763681949242543,
+      "acc_mag_ratio": 1.0
+    },
+    "SA": {
+      "sensor": "SA",
+      "rtc": "2021-06-25 15:44:12",
+      "skew_s": -12.044000000000096,
+      "skew_confident": [
+        {
+          "trial": "Sitting_01",
+          "corr": 0.633736228057154,
+          "skew_s": -12.044000000000096
+        }
+      ],
+      "epoch_offset_s": -3.9052187499999036,
+      "intersensor_refine": {
+        "lag_ms": -50.78125,
+        "corr": 0.4502957830185219,
+        "applied": true
+      },
+      "slice": {
+        "i0": 678125,
+        "i1": 712875,
+        "n": 34750,
+        "epoch_offset_s": -3.9052187499999036
+      },
+      "invalid_pct": 0.0019744091889003653,
+      "acc_mag_ratio": 1.0000020053020184
+    }
+  },
+  "walking_segment": {
+    "t0_opt_s": 2645.0186249999997,
+    "t1_opt_s": 2780.7608124999997,
+    "duration_s": 135.7421875,
+    "foot_native_idx": [
+      673956,
+      708706
+    ],
+    "delimiting": {
+      "method": "foot-IMU gyro RMS threshold + gap-bridge + pad",
+      "activity_node": "RF",
+      "threshold_dps": 60.0,
+      "smooth_s": 0.5,
+      "min_gap_s": 1.0,
+      "pad_s": 0.5
+    }
+  },
+  "optical_windows": [
+    {
+      "trial": "01",
+      "foot_bin_idx": [
+        676234,
+        677161
+      ],
+      "t_opt_start_s": 8.8984375,
+      "t_opt_end_s": 12.51953125,
+      "n_sync": 362,
+      "refine_corr": 0.26354470605949554
+    },
+    {
+      "trial": "02",
+      "foot_bin_idx": [
+        685943,
+        686880
+      ],
+      "t_opt_start_s": 46.82421875,
+      "t_opt_end_s": 50.484375,
+      "n_sync": 366,
+      "refine_corr": 0.08065716912637866
+    },
+    {
+      "trial": "03",
+      "foot_bin_idx": [
+        696241,
+        697129
+      ],
+      "t_opt_start_s": 87.05078125,
+      "t_opt_end_s": 90.51953125,
+      "n_sync": 347,
+      "refine_corr": 0.11623621168808347
+    }
+  ],
+  "slice_columns": "t_native_s,t_opt_s,ax..az(m/s^2),gx..gz(rad/s),mx..mz(raw counts,256Hz tag0x18,uncalibrated)",
+  "mag_calibration": "NOT applied here; fitted/applied in gaitlib",
+  "out_dir": "data\\P04_S01_2minWalk"
+}

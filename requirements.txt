@@ -1,16 +1,9 @@
-# Gait Kinematics — dependencies.
+# gait-opensim runtime dependencies.
+#
+# NOTE: opensim is intentionally NOT listed. OpenSim/OpenSense runs as a separate GUI
+# application and consumes the .sto files this package writes; it is never imported here.
 
-# --- gaitlib library (required) ---
-numpy>=1.25
-scipy>=1.10
-
-# --- Viewer app (app/main.py): 2D graphs only, no 3D/OpenGL ---
-pyqtgraph>=0.13
-PyQt5>=5.15
-pyyaml>=6.0          # reads config/app.yaml
-
-# --- Research/dataset pipeline (pipeline/, optional; needs the Geneva dataset) ---
-ezc3d>=1.5           # read optical c3d for validation
-pandas>=2.0
-matplotlib>=3.7      # research plots / pipeline visualize.py --save
-openpyxl>=3.1        # subject stature from the dataset's Inputs sheet (optional)
+numpy>=1.20
+scipy>=1.7          # signal/quaternion utilities (gait-event peak finding, convention check)
+vqf>=2.1            # Laidig & Seel (2023) validated orientation filter
+matplotlib>=3.5     # app.viewer — joint-angle / gait-cycle / parameter figures

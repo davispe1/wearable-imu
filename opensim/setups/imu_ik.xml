@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  OpenSense IMU Inverse Kinematics setup (OpenSim 4.5).
+
+  Tracks the FULL-trial orientation table (the *_orientations.sto written by
+  `python -m opensim_export.to_sto`) with the calibrated model from the IMU Placer step and
+  writes joint angles (.mot). With report_errors=true it also writes
+  <output_motion_file>_orientationErrors.sto next to the result.
+
+  Replace the SUBJECT_* placeholders and set time_range to your trial window. Property names
+  match OpenSim::IMUInverseKinematicsTool and InverseKinematicsToolBase.
+-->
+<OpenSimDocument Version="40500">
+    <IMUInverseKinematicsTool name="IMU_IK">
+        <!-- Calibrated model produced by imu_placer.xml. -->
+        <model_file>SUBJECT_calibrated.osim</model_file>
+
+        <!-- Full-trial orientations: the *_orientations.sto from to_sto. -->
+        <orientations_file>SUBJECT_orientations.sto</orientations_file>
+
+        <!-- MUST match the value used in the IMU Placer step. -->
+        <sensor_to_opensim_rotations>-1.5707963267948966 0 0</sensor_to_opensim_rotations>
+
+        <!-- [start end] seconds. Set to your trial window (the .sto time column is 0-based). -->
+        <time_range>0 10</time_range>
+
+        <!-- Solver settings. -->
+        <accuracy>1.0000000000000001e-04</accuracy>
+        <constraint_weight>20</constraint_weight>
+
+        <!-- Write per-frame orientation-tracking errors (sanity check on the fit). -->
+        <report_errors>true</report_errors>
+
+        <!-- Output joint-angle motion. -->
+        <output_motion_file>SUBJECT_ik.mot</output_motion_file>
+
+        <!-- Per-IMU tracking weights default to 1.0. To down-weight a noisy segment, add an
+             <orientation_weights> OrientationWeightSet here (e.g. lower calcn_r_imu). -->
+    </IMUInverseKinematicsTool>
+</OpenSimDocument>

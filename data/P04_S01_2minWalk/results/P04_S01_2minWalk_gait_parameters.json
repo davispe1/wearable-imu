@@ -1,0 +1,109 @@
+{
+  "session_id": "P04_S01_2minWalk",
+  "fs_hz": 256.01638504865997,
+  "duration_s": 135.7383,
+  "side": "right",
+  "fusion_modes": {
+    "RF": "6D",
+    "RS": "6D",
+    "RT": "6D",
+    "SA": "6D"
+  },
+  "joints": {
+    "hip": {
+      "rom_deg": 56.0603300277514,
+      "rom_deg_full": 56.0603300277514,
+      "peak_flexion_deg": 13.11616628346309,
+      "peak_extension_deg": -42.94416374428831,
+      "peak_abs_vel_dps": 270.1861606553371,
+      "mean_abs_vel_dps": 81.3347763884352,
+      "cycle_count": 123,
+      "active_duration_s": 109.2664439999928,
+      "rom_cycle_deg": 46.45935342413598,
+      "peak_flexion_cycle_deg": 7.807474316344766,
+      "peak_extension_cycle_deg": -38.65187910779122
+    },
+    "knee": {
+      "rom_deg": 77.60461286915417,
+      "rom_deg_full": 86.70048558703328,
+      "peak_flexion_deg": 76.93411132185074,
+      "peak_extension_deg": -9.76637426518255,
+      "peak_abs_vel_dps": 451.89683449824514,
+      "mean_abs_vel_dps": 138.0788672330219,
+      "cycle_count": 99,
+      "active_duration_s": 108.07120799999288,
+      "rom_cycle_deg": 68.59343424750149,
+      "peak_flexion_cycle_deg": 63.718066262616404,
+      "peak_extension_cycle_deg": -4.875367984885082
+    },
+    "ankle": {
+      "rom_deg": 47.73184859159505,
+      "rom_deg_full": 47.73184859159505,
+      "peak_flexion_deg": 37.37637712000321,
+      "peak_extension_deg": -10.355471471591839,
+      "peak_abs_vel_dps": 455.54001512389266,
+      "mean_abs_vel_dps": 82.3015458389896,
+      "cycle_count": 99,
+      "active_duration_s": 106.89159599999296,
+      "rom_cycle_deg": 33.662618332699004,
+      "peak_flexion_cycle_deg": 30.00611060127459,
+      "peak_extension_cycle_deg": -3.656507731424418
+    }
+  },
+  "temporal": {
+    "cadence_steps_per_min": 100.45080724209889,
+    "stride_time_mean_s": 1.1946145909090122,
+    "stride_time_std_s": 0.03907724634752519,
+    "stride_time_cv_pct": 3.2711174503393883,
+    "step_time_s": 0.5973072954545061,
+    "stance_pct": 57.05308460572995,
+    "swing_pct": 42.94691539427005,
+    "n_steady_strides": 88,
+    "n_foot_strikes_total": 110
+  },
+  "spatial": {
+    "stride_length_m_est": 1.429999652471079,
+    "stride_length_std_m_est": 0.055321282289977736,
+    "walking_speed_mps_est": 1.1970384953886728,
+    "n_strides_spatial": 87
+  },
+  "n_turnarounds": 7,
+  "turnarounds": [
+    {
+      "t_start_s": 19.25781,
+      "t_end_s": 20.49219,
+      "deg": 128.662623101581
+    },
+    {
+      "t_start_s": 38.82812,
+      "t_end_s": 40.33594,
+      "deg": 155.90437440940357
+    },
+    {
+      "t_start_s": 58.33984,
+      "t_end_s": 59.96484,
+      "deg": 155.55594386668474
+    },
+    {
+      "t_start_s": 78.58984,
+      "t_end_s": 80.07812,
+      "deg": 150.3892599265997
+    },
+    {
+      "t_start_s": 98.19531,
+      "t_end_s": 100.0391,
+      "deg": 149.84349816221692
+    },
+    {
+      "t_start_s": 118.2461,
+      "t_end_s": 119.4961,
+      "deg": 138.55804905692113
+    },
+    {
+      "t_start_s": 133.1797,
+      "t_end_s": 134.9336,
+      "deg": -135.69219171969286
+    }
+  ],
+  "warnings": []
+}

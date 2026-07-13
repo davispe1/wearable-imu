@@ -1,20 +1,25 @@
-# --- Datasets & recordings (NEVER version-controlled / uploaded) ---
-# Geneva dataset (READ-ONLY source)
+# --- Never version-controlled sources ---
+# Geneva dataset (read-only source)
 Human gait and other movements - markers inertial sensors pressure insoles force plates/
-# Recordings & dataset slices under data/ — keep only the placeholders
-data/*
-!data/.gitkeep
-!data/README.md
-!data/schema_example.csv
-
-# Pipeline-generated outputs
+# local working/scratch copy (includes vendored SMPL model files under license)
+gait-opensim/
+# App session store / pipeline outputs, if run locally
+GaitApp/
 outputs/
 
-# App session store (default lives in the user's home; ignore any local copy too)
-GaitApp/
+# --- Session data ---
+# Keep only the two bundled examples (P04 real session, SYN01 synthetic session),
+# the Rajagopal OpenSense model, and the tiny schema example. Any new session you
+# create locally (e.g. `python -m tools.make_synthetic_session` re-run, or your own
+# recordings) stays untracked unless you remove it from this list on purpose.
+data/*
+!data/schema_example.csv
+!data/Rajagopal_OpenSense/
+!data/P04_S01_2minWalk/
+!data/SYN01_S01_straightWalk/
 
-# Generated docs artifact
-docs/Gait_Kinematics_Methods.docx
+# --- OpenSim / OpenSense run logs ---
+opensim.log
 
 # --- Python ---
 __pycache__/
@@ -24,7 +29,6 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
-.ipynb_checkpoints/
 
 # --- OS / editor ---
 .DS_Store

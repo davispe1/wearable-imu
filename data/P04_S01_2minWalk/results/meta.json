@@ -1,0 +1,19 @@
+{
+  "leg": "right",
+  "fs": 256.4103,
+  "segment_lengths_m": {
+    "pelvis": 0.17,
+    "thigh": 0.4165,
+    "shank": 0.4182,
+    "foot": 0.2584
+  },
+  "segment_lengths_source": "Winter body-segment proportions \u00d7 stature (default (1.7 m \u2014 no subject stature available))",
+  "stature_m": 1.7,
+  "n_frames": 34752,
+  "frame_schema": [
+    "t_s",
+    "hip_deg",
+    "knee_deg",
+    "ankle_deg"
+  ]
+}

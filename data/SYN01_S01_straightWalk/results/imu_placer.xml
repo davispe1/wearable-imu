@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  OpenSense IMU Placer setup for SYN01_S01_straightWalk (OpenSim 4.5).
+  Ready to load as-is: Tools > Calibrate Model from IMU Data... > load this file,
+  or `opensense -Placer imu_placer.xml` from this folder.
+  Generated from opensim/setups/imu_placer.xml — see opensim/README.md and
+  docs/opensim_steps.md for the full walkthrough.
+-->
+<OpenSimDocument Version="40500">
+    <IMUPlacer name="IMU_Placer">
+        <!-- Rajagopal model with IMU frames, shared across sessions. -->
+        <model_file>../../Rajagopal_OpenSense/Rajagopal2015_opensense.osim</model_file>
+
+        <!-- Pelvis is the root segment of this single-leg rig, so it is the base IMU. -->
+        <base_imu_label>pelvis_imu</base_imu_label>
+        <!-- MUST be x for the synthetic data: its sensor frame has X = walking/heading
+             direction (see make_synthetic_session._seg_R: R = Rz(psi) @ Ry(-alpha), so at the
+             neutral pose sensor X points along the heading, Z is earth-up). Using z here makes
+             the Placer read the vertical axis as "forward" -> a degenerate ~90 deg heading
+             correction that rotates the model sideways, so sagittal motion shows up as hip
+             ADduction and the knee hinge freezes. With x the heading resolves cleanly and IK
+             recovers hip~40 / knee~59 / ankle~23 deg with sub-0.05 deg tracking error. -->
+        <base_heading_axis>x</base_heading_axis>
+
+        <!-- VQF reports a Z-up world; OpenSim ground is Y-up: -pi/2 about X. -->
+        <sensor_to_opensim_rotations>-1.5707963267948966 0 0</sensor_to_opensim_rotations>
+
+        <orientation_file_for_calibration>SYN01_S01_straightWalk_calibration.sto</orientation_file_for_calibration>
+        <output_model_file>SYN01_S01_straightWalk_calibrated.osim</output_model_file>
+    </IMUPlacer>
+</OpenSimDocument>

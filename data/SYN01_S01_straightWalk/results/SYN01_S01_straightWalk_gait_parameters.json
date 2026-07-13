@@ -1,0 +1,73 @@
+{
+  "session_id": "SYN01_S01_straightWalk",
+  "fs_hz": 100.00000000000213,
+  "duration_s": 13.49,
+  "side": "right",
+  "fusion_modes": {
+    "RF": "6D",
+    "RS": "6D",
+    "RT": "6D",
+    "SA": "6D"
+  },
+  "joints": {
+    "hip": {
+      "rom_deg": 40.10885311816857,
+      "rom_deg_full": 40.10885311816857,
+      "peak_flexion_deg": 30.084110662020745,
+      "peak_extension_deg": -10.024742456147823,
+      "peak_abs_vel_dps": 113.49911719215797,
+      "mean_abs_vel_dps": 57.67154962380492,
+      "cycle_count": 11,
+      "active_duration_s": 10.199999999999783,
+      "rom_cycle_deg": 39.680865557627676,
+      "peak_flexion_cycle_deg": 29.923225501663598,
+      "peak_extension_cycle_deg": -9.757640055964078
+    },
+    "knee": {
+      "rom_deg": 64.44238557522428,
+      "rom_deg_full": 64.44238557522428,
+      "peak_flexion_deg": 59.54141771780103,
+      "peak_extension_deg": -4.900967857423243,
+      "peak_abs_vel_dps": 399.76975184418745,
+      "mean_abs_vel_dps": 105.57395028508292,
+      "cycle_count": 12,
+      "active_duration_s": 10.669999999999773,
+      "rom_cycle_deg": 56.3627377807062,
+      "peak_flexion_cycle_deg": 58.29129750061376,
+      "peak_extension_cycle_deg": 1.9285597199075641
+    },
+    "ankle": {
+      "rom_deg": 23.949339094178214,
+      "rom_deg_full": 23.949339094178214,
+      "peak_flexion_deg": 13.710149191501404,
+      "peak_extension_deg": -10.23918990267681,
+      "peak_abs_vel_dps": 168.4367521198823,
+      "mean_abs_vel_dps": 43.547560523270064,
+      "cycle_count": 10,
+      "active_duration_s": 9.719999999999793,
+      "rom_cycle_deg": 23.487072474988814,
+      "peak_flexion_cycle_deg": 13.373385265945991,
+      "peak_extension_cycle_deg": -10.113687209042823
+    }
+  },
+  "temporal": {
+    "cadence_steps_per_min": 109.09090909091141,
+    "stride_time_mean_s": 1.0999999999999766,
+    "stride_time_std_s": 0.0,
+    "stride_time_cv_pct": 0.0,
+    "step_time_s": 0.5499999999999883,
+    "stance_pct": 61.81818181818181,
+    "swing_pct": 38.18181818181819,
+    "n_steady_strides": 9,
+    "n_foot_strikes_total": 10
+  },
+  "spatial": {
+    "stride_length_m_est": 1.3537210396192465,
+    "stride_length_std_m_est": 0.001053489481046922,
+    "walking_speed_mps_est": 1.2306554905629776,
+    "n_strides_spatial": 8
+  },
+  "n_turnarounds": 0,
+  "turnarounds": [],
+  "warnings": []
+}

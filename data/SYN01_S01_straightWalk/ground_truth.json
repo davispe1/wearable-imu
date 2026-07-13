@@ -1,0 +1,47 @@
+{
+  "session_id": "SYN01_S01_straightWalk",
+  "fs": 100.0,
+  "side": "right",
+  "heading_deg": 40.0,
+  "model": "planar-sagittal normative gait, forward-simulated (orientation-first)",
+  "n_strides": 10,
+  "stride_time_s": 1.1,
+  "cadence_steps_per_min": 109.09090909090908,
+  "stance_pct": 62.0,
+  "swing_pct": 38.0,
+  "stride_length_m": 1.35,
+  "walking_speed_mps": 1.2272727272727273,
+  "foot_strike_times_s": [
+    1.5,
+    2.6,
+    3.7,
+    4.8,
+    5.9,
+    7.0,
+    8.1,
+    9.2,
+    10.3,
+    11.4,
+    12.5
+  ],
+  "magnetometer": {
+    "field_uT": [
+      24.0,
+      0.0,
+      -41.569
+    ],
+    "inclination_deg": 60.0,
+    "gyro_drift_dps": 0.0
+  },
+  "joint_rom_deg": {
+    "hip": 39.73992381156803,
+    "knee": 55.078453750620575,
+    "ankle": 23.599066742116328
+  },
+  "joint_peak_flexion_deg": {
+    "hip": 29.869961905784017,
+    "knee": 59.36385049465348,
+    "ankle": 9.605533015730474
+  },
+  "note": "Idealised fixture: no soft-tissue artefact; noise/misalignment off by default."
+}

@@ -1,0 +1,183 @@
+{
+  "fs_hz": 256.01638504865997,
+  "duration_s": 135.73740599999107,
+  "primary_fusion": "6dof",
+  "joints": [
+    "ankle",
+    "knee",
+    "hip"
+  ],
+  "per_joint": {
+    "ankle": {
+      "rom_deg": 49.138483351281295,
+      "rom_deg_full": 49.138483351281295,
+      "peak_min_deg": -26.291579898801196,
+      "peak_max_deg": 22.846903452480095,
+      "peak_abs_vel_dps": 420.8729155156018,
+      "mean_abs_vel_dps": 76.8219292138355,
+      "repetition_count": 98,
+      "active_duration_s": 97.12268999999361
+    },
+    "knee": {
+      "rom_deg": 98.88442300120045,
+      "rom_deg_full": 105.45593354264861,
+      "peak_min_deg": -25.654640636207855,
+      "peak_max_deg": 79.80129290644075,
+      "peak_abs_vel_dps": 506.8426182440009,
+      "mean_abs_vel_dps": 131.90523045737518,
+      "repetition_count": 98,
+      "active_duration_s": 106.84472399999296
+    },
+    "hip": {
+      "rom_deg": 44.08778375569314,
+      "rom_deg_full": 58.28354224905437,
+      "peak_min_deg": -40.04029623634837,
+      "peak_max_deg": 18.243246012706003,
+      "peak_abs_vel_dps": 360.3022535973866,
+      "mean_abs_vel_dps": 62.66772323636072,
+      "repetition_count": 101,
+      "active_duration_s": 103.18089599999321
+    }
+  },
+  "gait": {
+    "cadence_steps_per_min": 100.253384733706,
+    "stride_time_mean_s": 1.1969670681817393,
+    "stride_time_std_s": 0.05970055011163001,
+    "step_time_s": 0.5984835340908696,
+    "stance_pct": 50.087225635752006,
+    "swing_pct": 49.912774364247994,
+    "n_steady_strides": 95,
+    "n_foot_strikes": 116
+  },
+  "n_turnarounds": 7,
+  "turnarounds": [
+    {
+      "t_start_s": 19.260485999998732,
+      "t_end_s": 20.49478199999865,
+      "deg": 128.66694386769245
+    },
+    {
+      "t_start_s": 38.83345199999744,
+      "t_end_s": 40.337261999997345,
+      "deg": 155.71281592256776
+    },
+    {
+      "t_start_s": 58.34392199999616,
+      "t_end_s": 59.964911999996055,
+      "deg": 155.36471422265194
+    },
+    {
+      "t_start_s": 78.59262599999482,
+      "t_end_s": 80.07690599999474,
+      "deg": 150.19758010608675
+    },
+    {
+      "t_start_s": 98.19683999999354,
+      "t_end_s": 100.04047199999341,
+      "deg": 149.84740220224558
+    },
+    {
+      "t_start_s": 118.24633799999222,
+      "t_end_s": 119.50016399999214,
+      "deg": 138.76048381896564
+    },
+    {
+      "t_start_s": 133.18288199999122,
+      "t_end_s": 134.9327699999911,
+      "deg": -135.49985310858216
+    }
+  ],
+  "warnings": [],
+  "config": {
+    "sensors": {
+      "RF": "right foot",
+      "RS": "right shank",
+      "RT": "right thigh",
+      "SA": "sacrum / pelvis"
+    },
+    "joints": {
+      "ankle": [
+        "RF",
+        "RS"
+      ],
+      "knee": [
+        "RS",
+        "RT"
+      ],
+      "hip": [
+        "RT",
+        "SA"
+      ]
+    },
+    "foot_node": "RF",
+    "pelvis_node": "SA",
+    "rates": {
+      "imu_hz": 256.01638504865997,
+      "mag_hz": 256.01638504865997
+    },
+    "fusion": {
+      "run_modes": [
+        "6dof"
+      ],
+      "beta_6dof": 0.033,
+      "beta_9dof": 0.05,
+      "joint_tau_s": 0.3
+    },
+    "strict": false
+  },
+  "meta": {
+    "nodes": [
+      "RF",
+      "RS",
+      "RT",
+      "SA"
+    ],
+    "foot_node": "RF",
+    "pelvis_node": "SA",
+    "run_modes": [
+      "6dof"
+    ],
+    "session_id": "P04_S01_2minWalk",
+    "subject": "P04",
+    "date": "2021-06-25",
+    "task": "",
+    "side": "right",
+    "node_labels": {
+      "RF": "right foot",
+      "RS": "right shank",
+      "RT": "right thigh",
+      "SA": "sacrum / pelvis"
+    },
+    "joints": {
+      "ankle": [
+        "RF",
+        "RS"
+      ],
+      "knee": [
+        "RS",
+        "RT"
+      ],
+      "hip": [
+        "RT",
+        "SA"
+      ]
+    },
+    "fs_hz": 256.016,
+    "duration_s": 135.74,
+    "height_m": 1.77,
+    "n_samples": {
+      "RF": 34750,
+      "RS": 34750,
+      "RT": 34750,
+      "SA": 34750
+    },
+    "source_files": [
+      "RF.csv (per-node)",
+      "RS.csv (per-node)",
+      "RT.csv (per-node)",
+      "SA.csv (per-node)"
+    ],
+    "has_results": false,
+    "path": "data/P04_S01_2minWalk"
+  }
+}
