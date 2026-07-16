@@ -38,6 +38,15 @@ fp-info-cache
 *.stl.bak
 *.step.bak
 *_autosave*
+*.lck
+~*.lck
+.history/
+.history_trim/
+tmp*.rpt
+*.rpt
+
+# ── Claude Code project settings ─────────────────────────────────────────────
+.claude/
 
 # ── OS / editor ──────────────────────────────────────────────────────────────
 .DS_Store
