@@ -59,6 +59,14 @@ started, under [`test-rig/hardware/mechanical/v1.0/`](../test-rig/hardware/mecha
       [`simulation/scripts/ik_design.md`](../simulation/scripts/ik_design.md).
       **Do not rely on this for calibration/ground-truth work until it's validated
       against known FK solutions — treat every output as unverified for now.**
+- [ ] **End-effector adapter** — no piece exists yet to mount a wearable IMU
+      node at the rig's end effector (needed for both teleop and
+      calibration/ground-truth use). Not designed.
+- [ ] **Wearable IMU rig variant ("fork")** — a modified wearable IMU enclosure
+      built to attach to the rig exists, but isn't in this repo yet; CAD needs
+      to be added.
+- [ ] **Reprint the `arm` piece** — the physical part currently on the lab rig
+      needs a fresh print.
 
 ## Hardware revisions
 
@@ -103,3 +111,6 @@ started, under [`test-rig/hardware/mechanical/v1.0/`](../test-rig/hardware/mecha
       link margin), then decide whether the DWM3000 antenna issue gets a v1.1
       placement-only fix or gets folded into a v2.0 redesign (see "Hardware
       revisions" above)
+- [ ] **Onboarding doc for new students** — not written yet. Needs to cover
+      at least: STM32CubeProgrammer (flashing, updating the FUS / BLE stack),
+      Serial Monitor Pro (viewing the sensor bring-up smoke-test output).

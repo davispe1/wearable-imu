@@ -36,6 +36,13 @@ Follows the same versioning convention as the main project: hardware gets
 version folders, firmware/control are git-tagged (`rig-vX.Y.Z`, separate from
 the main system's `imu-vX.Y.Z`).
 
+## Known gaps
+
+See [`hardware/mechanical/v1.0/README.md`](hardware/mechanical/v1.0/README.md#known-gaps):
+missing end-effector adapter to mount a wearable IMU node on the rig, a
+modified/"fork" wearable IMU rig variant that exists but isn't in this repo
+yet, and the lab's `arm` piece needing a reprint.
+
 ## Related work
 
 The 5-DOF arm forward/inverse kinematics — used both as a teleoperation demo
