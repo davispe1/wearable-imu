@@ -21,7 +21,7 @@
 
 - STM32WBA55: https://www.st.com/en/microcontrollers-microprocessors/stm32wba55.html
 - LSM6DSV16B: https://www.st.com/en/mems-and-sensors/lsm6dsv16b.html
-- MMC5983MA: https://www.memsic.com/magnetometer-2
+- BMM350: https://www.bosch-sensortec.com/products/motion-sensors/magnetometers/bmm350/
 - DWM3000: https://www.qorvo.com/products/p/DWM3000
 - W25Q64: https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/
 - BQ25185: https://www.ti.com/product/BQ25185

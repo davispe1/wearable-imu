@@ -24,8 +24,28 @@ host/wearable_imu/
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python host/wearable_imu/main.py
 ```
+
+## Running (Phase 1 — ingest path is live)
+
+The protocol/ingest path is stdlib-only, so it runs without installing anything:
+
+```bash
+# from host/
+py -m wearable_imu.main --sim --seconds 3          # synthetic data through the real codec
+py -m wearable_imu.main --sim --capture cap.bin --seconds 5   # write a capture
+py -m wearable_imu.main --replay cap.bin           # replay a capture file
+py -m wearable_imu.main                             # live: config.TRANSPORT serial port
+```
+
+## Tests
+
+```bash
+py host/tests/test_protocol.py     # round-trip, fragmentation, resync, golden vector
+```
+
+The golden vector in the test is byte-identical to `firmware/.../packet_selftest.c`,
+so the firmware and host encoders are locked together.
 
 ## Development order (README §7)
 

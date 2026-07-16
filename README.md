@@ -8,6 +8,18 @@
 > so it can be handed to **Claude Code** (or any collaborator) to scaffold and build
 > the project. See [How to use this document](#how-to-use-this-document) at the end.
 
+### At a glance
+
+| Node PCB (v1.0) | 5-DOF calibration / teleop rig |
+|---|---|
+| ![PCB 3D top](hardware/electronics/v1.0/documentation/pcb-3d-top.png) | ![5-DOF arm rig](test-rig/hardware/mechanical/v1.0/isometric_rig_view.png) |
+
+**Left:** the wearable IMU node PCB (STM32WBA55 + DWM3000 + LSM6DSV16BXTR + BMM350).
+**Right:** a separate parallel sub-project, [`test-rig/`](test-rig/README.md) — a
+motorised 5-DOF arm used two ways: (1) **teleoperation demo**, driven live from the
+wearable nodes, and (2) **calibration / ground truth**, moved through known joint
+angles to validate the IMU pipeline's estimated angles against a known reference.
+
 ---
 
 ## 1. Project overview
@@ -21,7 +33,7 @@ the PC (which has an RTX 4060 GPU).
 |------|----------------|
 | Focus | Upper limb |
 | Output | Live joint angles + 3D skeleton visualization |
-| Nodes | Scalable design; initial bring-up on **3 nodes** (one arm), scaling to **6–8** |
+| Nodes | Scalable design; initial bring-up on **2 confirmed nodes** (wrist, clavicle), a 3rd (chest) possible, scaling to **6–8** |
 | Sample rate | **100 Hz** target (hardware capable to 200 Hz) |
 | Environment | Lab / bench (PC present in the room) |
 | Compute | All heavy processing on the PC, **not** on a body MCU |
@@ -84,17 +96,20 @@ paths to the PC. Layered strategy:
 
 | Layer | Path | Role |
 |-------|------|------|
-| Live primary | BLE (master → PC, native or via nRF52840 USB dongle) | Main wireless link |
+| Live primary | BLE (master → PC, **host-native** Bluetooth — no dongle) | Main wireless link |
 | Live backup | UWB → UWB-USB dongle | Independent RF path (different band) |
 | Wired | **SWD / SWO** via ST-LINK | Bench/dev + data recovery (one-way out) |
 | Insurance | **W25Q64** per-node logging | No data loss even if all live links fail; recovered over SWD |
 
 Notes:
 - BLE uses **serial-over-BLE** (a transparent UART-style GATT service / NUS-equivalent), so
-  it behaves like a wireless UART. An **nRF52840 USB dongle** can present it to the PC as a
-  COM port.
-- **SWD is a 10-pin connector**; SWO gives a one-way MCU→PC data channel through the ST-LINK
-  (read via SWV tooling). This replaces the earlier USB-UART bridge idea (no CP2102N).
+  it behaves like a wireless UART. **Decided: host-native Bluetooth, no nRF52840 dongle** —
+  simpler, one less part.
+- **Debug/data connection is a TC2030-IDC footprint** — bare pogo-pin pads on the PCB, not a
+  soldered connector. A separate Tag-Connect TC2030 cable/clip clamps onto those pads from
+  outside the board (to an ST-LINK) to make contact. Carries SWDIO/SWDCLK/SWO; SWO gives a
+  one-way MCU→PC data channel (read via SWV tooling). This replaces the earlier USB-UART
+  bridge idea (no CP2102N).
 - **USB-C still charges** the battery (handled by the BQ25185, independent of the MCU). The
   WBA55 has **no native USB**, so USB-C is charging-only.
 - RAM ring buffer (~seconds) covers jitter/retransmit; a >3–5 s dropout is treated as a
@@ -109,26 +124,43 @@ Single identical board for every node. (No on-node SD card.)
 | Function | Part | Notes |
 |----------|------|-------|
 | MCU | **STM32WBA55CG** (UFQFPN48, e.g. STM32WBA55CGU7) | Cortex-M33 @ 100 MHz, BLE 5.4, 1 MB flash, 128 KB SRAM, SESIP Level 3. Drives DWM3000 over SPI. |
-| IMU | **LSM6DSV16BXTR** | 6-axis, onboard SFLP sensor fusion |
-| Magnetometer | **MMC5983MA** | Separate 3-axis → makes the node 9-DOF. Populated but **optional** (use TBD) |
-| UWB | **DWM3000** | Data transport + sync + (phase-2) inter-node ranging |
+| IMU | **LSM6DSV16BXTR** | 6-axis, onboard SFLP sensor fusion. **I2C1, addr `0x6B`** (SDO pulled high) |
+| Magnetometer | **BMM350** | Separate 3-axis → makes the node 9-DOF. **Decided: using it for v1** (not yet implemented in firmware — see [§7](#7-build-phases--roadmap)). **I2C1, addr `0x14`** (ADSEL pulled low) |
+| UWB | **DWM3000** | Data transport + sync + (phase-2) inter-node ranging. SPI1 (only SPI sensor on the node — IMU and mag are both I2C) |
 | Local flash | **W25Q64JVXGIM** (8 MB) | RAM-buffer backstop + no-loss session insurance |
 | SMPS (+3V3) | **TPSM828224** | |
 | Battery charger | **BQ25185** | Charges from USB-C VBUS |
 | Fuel gauge | **MAX17048G_T10** | |
 | Power button | **STM6601BM2DDM6F** | |
 | USB-C | Right-angle 16P | **Charging only** (no MCU USB) |
-| Debug/data | **10-pin SWD connector** | SWD + SWO (data out / flash recovery) |
+| Debug/data | **TC2030-IDC footprint** (Tag-Connect) | Bare pogo-pin pads, no on-board connector — mates with a separate TC2030 cable/clip. SWD + SWO — data out / flash recovery |
 | Indicator | LED | |
-| Battery | LiPo, ~300–600 mAh | **Not final** — may shrink to ~300 mAh |
+| Battery | LiPo, **120 mAh** | |
 
 ### PC-side hardware
 
 | Function | Part | Notes |
 |----------|------|-------|
-| BLE receiver | PC-native Bluetooth, or **nRF52840 USB dongle** | Dongle preferred if native BLE proves unreliable; presents as COM port |
+| BLE receiver | **PC-native Bluetooth** | Decided: no nRF52840 dongle |
 | UWB backup receiver | UWB-USB dongle (DWM3000 + USB MCU) | Optional, for the UWB fallback path |
 | Compute | PC with **RTX 4060** | Runs full pipeline + visualization |
+
+### Node PCB v1.0 — renders & board views
+
+> Full detail (all four copper layers, schematic PDF, fab files) lives in
+> [`hardware/electronics/v1.0/`](hardware/electronics/v1.0/README.md).
+> Known antenna keepout issue on the DWM3000 — see [§7](#7-build-phases--roadmap) for the
+> decision on whether that becomes a v1.1 bug-fix spin or gets folded into a v2.0 redesign,
+> pending v1.0 bring-up results. See also
+> [`hardware/electronics/CHANGELOG.md`](hardware/electronics/CHANGELOG.md).
+
+| PCB 3D — top | PCB 3D — bottom |
+|---|---|
+| ![PCB 3D top](hardware/electronics/v1.0/documentation/pcb-3d-top.png) | ![PCB 3D bottom](hardware/electronics/v1.0/documentation/pcb-3d-bottom.png) |
+
+| Assembled (exploded) | Worn on wrist |
+|---|---|
+| ![Assembly exploded](hardware/mechanical/v1.0/assembly-exploded-view.png) | ![Worn on wrist](hardware/mechanical/v1.0/device-worn-on-wrist.jpg) |
 
 ---
 
@@ -188,73 +220,102 @@ Single identical board for every node. (No on-node SD card.)
 > on a NUCLEO-WBA55CG with ST's serial-over-BLE example; then integrate with the wired path
 > still available as a safety net.
 
+### Parallel workstream — 5-DOF arm / test rig
+
+A 5-DOF robotic arm mirroring human upper-limb kinematics. It's a single physical
+rig serving **two purposes**:
+
+1. **Teleoperation demo** — drive the arm live from the wearable IMU nodes.
+2. **Calibration / ground-truth measurement** — move the arm through known joint
+   angles and compare against the IMU pipeline's estimated angles, to quantify
+   filter error.
+
+![5-DOF arm rig](test-rig/hardware/mechanical/v1.0/isometric_rig_view.png)
+
+Status: forward kinematics validated (MATLAB GUI); inverse kinematics implemented
+but not yet validated; mechanical CAD for the rig itself in progress. Full detail
+in [`docs/07-roadmap.md`](docs/07-roadmap.md#parallel-workstream--5-dof-arm-teleoperation--calibration-rig)
+and [`test-rig/README.md`](test-rig/README.md).
+
 ---
 
-## 8. Repository structure (proposed)
+## 8. Repository structure
+
+Actual current tree (not aspirational — status noted per folder):
 
 ```
 wearable-imu/
 ├── README.md                      # this file
-├── docs/                          # markdown source of truth (export to Word/PDF as needed)
+├── CONTRIBUTING.md                # branch/tag/versioning conventions
+├── docs/                          # markdown source of truth, one file per section
 │   ├── 01-system-overview.md
 │   ├── 02-hardware.md
-│   ├── 03-firmware.md
-│   ├── 04-communication-protocols.md
-│   ├── 05-algorithms-pipeline.md
-│   ├── 06-pc-software.md
-│   ├── 07-calibration-testing.md
+│   ├── 03-communication.md        # authoritative wire protocol spec
+│   ├── 04-firmware.md             # firmware architecture: CubeMX project + smoke test are
+│   │                               #   real; packet/comms application layer still planned
+│   ├── 05-host-pipeline.md
+│   ├── 06-calibration.md
+│   ├── 07-roadmap.md              # build phases, real done/not-done status, open items
 │   └── 08-appendices.md
 │
-├── firmware/
-│   └── node/                      # single firmware, master role selected at runtime/build
-│       ├── Core/                  # CubeMX-generated (HAL, startup, clock)
-│       ├── App/
-│       │   ├── app_main.c/.h
-│       │   ├── role_master.c/.h   # aggregation + BLE uplink
-│       │   └── role_sensor.c/.h   # sample + UWB tx
-│       ├── Drivers/
-│       │   ├── lsm6dsv16b/        # IMU driver
-│       │   ├── mmc5983ma/         # magnetometer driver
-│       │   ├── dwm3000/           # UWB driver
-│       │   └── w25q64/            # flash driver
-│       ├── Comms/
-│       │   ├── uwb_tdma.c/.h      # TDMA frame: data + ranging + sync
-│       │   ├── ble_serial.c/.h    # serial-over-BLE service
-│       │   └── swo_data.c/.h      # SWO/ITM data out + flash dump
-│       ├── Sensors/
-│       │   ├── imu.c/.h
-│       │   ├── mag.c/.h
-│       │   └── fusion.c/.h        # optional on-node fusion
-│       ├── Power/
-│       │   ├── charger.c/.h       # BQ25185
-│       │   └── fuel_gauge.c/.h    # MAX17048
-│       └── config.h               # node id, role, sample rate, format flags
+├── firmware/                      # STM32CubeIDE project for the STM32WBA55 node
+│   ├── Core/                      # CubeMX-generated (HAL, startup, clock) — do not hand-edit
+│   ├── Drivers/                   # CMSIS + STM32WBxx HAL
+│   ├── Middlewares/ST/            # ST middleware
+│   ├── ThirdParty/                # BMM350, lsm6dsv16bx vendor drivers
+│   ├── USB_Device/                # USB device stack (charging path only)
+│   └── *.ioc / *.ld               # CubeMX config + linker scripts
+│   (application logic — packet serializer, UWB TDMA, BLE serial, role state
+│    machines — not written yet; see docs/07-roadmap.md)
 │
-├── pc/
-│   └── wearable_imu/              # Python package (the live pipeline)
-│       ├── ingest/                # serial / BLE / UWB readers
+├── host/                          # Python package — the live PC pipeline
+│   └── wearable_imu/
+│       ├── ingest/                # serial / SWO readers + wire protocol codec (real, tested)
 │       ├── sync/                  # timebase alignment
-│       ├── orientation/           # filters (complementary / Madgwick / VQF)
-│       ├── kinematics/            # joint angles + DH forward kinematics
-│       ├── ekf/                   # phase 2: UWB-distance fusion
-│       ├── viz/                   # 3D skeleton viewer
-│       ├── sim/                   # synthetic data generator for dev
+│       ├── orientation/           # filters (complementary / Madgwick / VQF) — stub
+│       ├── kinematics/            # joint angles + DH forward kinematics — stub
+│       ├── ekf/                   # phase 2: UWB-distance fusion — stub
+│       ├── viz/                   # 3D skeleton viewer — stub
+│       ├── sim/                   # synthetic data generator (real, drives dev without hardware)
 │       ├── config.py
 │       └── main.py
 │
-├── tools/
-│   ├── flash/                     # programming / provisioning scripts
-│   └── capture/                   # SWO / serial / BLE capture utilities
+├── hardware/                      # physical design files — only place with version folders
+│   ├── electronics/v1.0/          # node PCB: schematic, layout, fab files, renders
+│   └── mechanical/v1.0/           # node enclosure: STEP/STL, assembly renders
 │
-├── calibration/                   # calibration routines + saved profiles
-├── hardware/                      # schematics, BOM, layout (reference only)
-└── tests/
+├── simulation/scripts/            # 5-DOF arm kinematics (MATLAB) — FK validated, IK
+│                                   # implemented pending validation. Not yet cross-linked
+│                                   # into test-rig/ below.
+├── test-rig/                      # ground-truth validation rig — mostly planned
+│   └── hardware/mechanical/v1.0/  # rig arm CAD — in progress (the only real part so far)
+│
+├── calibration/                   # calibration routines + saved profiles — planned
+└── tools/                         # flash/capture/calibrate/replay scripts — planned
 ```
 
 ---
 
 ## 9. Design decisions log (the "why")
 
+- **Sensor selection, generally:** across the BOM, the guiding principle was to pick the
+  most capable part available in its class at design time, not the cheapest one that
+  technically works — this is a research/publication project, not a cost-optimized
+  product, so headroom (accuracy, noise floor, ranging precision) was prioritized over
+  BOM cost. The three sensing ICs below were each chosen on that basis:
+  - **IMU = LSM6DSV16BXTR:** one of ST's most capable 6-axis parts at selection time —
+    onboard SFLP (Sensor Fusion Low Power) hardware fusion can offload orientation
+    estimation from the host, but is bypassable for a raw-data path if the host EKF is
+    preferred instead. High ODR headroom (only 120 Hz is used here).
+  - **Magnetometer = BMM350:** chosen for resolution/noise performance over cheaper
+    3-axis parts, making the node 9-DOF. Populated on every board, but use is **optional**
+    pending characterization of the lab's magnetic environment — indoor steel/motors can
+    make magnetometer data actively worse than leaving it out.
+  - **UWB = DWM3000:** the most capable UWB module available for this application —
+    supports the newer 802.15.4z standard (better multipath resistance) with strong
+    ranging accuracy. Chosen as the **sole radio** on the node: it replaces what would
+    otherwise be a separate ranging radio, handling data transport, sub-ns time sync,
+    and inter-node ranging in one part.
 - **MCU = STM32WBA55** (over the earlier L431 / U535): the master needs BLE; identical
   BLE-capable boards let any node be master and enable topology testing. WBA55 is M33,
   ultra-low-power (good for a small battery), and SESIP3-certified (useful for a publishing /
@@ -293,7 +354,7 @@ wearable-imu/
 - **Magnetometer:** whether to use it (characterize the lab's magnetic environment first;
   hardware is populated either way).
 - **Battery:** final capacity (300–600 mAh).
-- **Node count for tests:** 3 (single arm) → 6–8.
+- **Node count for tests:** 2 confirmed (wrist, clavicle), chest possible as a 3rd → 6–8.
 - **Sample rate:** confirm 100 Hz (vs 200 Hz).
 - **Dongle:** PC-native BLE vs nRF52840 dongle; whether to build the UWB backup dongle.
 - **EKF scope:** confirm phase-2 (not v1).
