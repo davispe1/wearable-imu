@@ -62,8 +62,7 @@ flowchart LR
         N2 -- UWB --> M
         N3 -- UWB --> M
     end
-    M -- "BLE (primary)" --> PC["PC<br/>all processing + 3D viewer"]
-    M -. "UWB (backup) via dongle" .-> PC
+    M -- "BLE" --> PC["PC<br/>all processing + 3D viewer"]
     M -. "SWD / SWO (wired dev/recovery)" .-> PC
 ```
 
@@ -80,19 +79,18 @@ flowchart LR
 
 ## 3. Transports & fallbacks
 
-Every node has **two radios (BLE + UWB)**, giving multiple independent paths to the PC.
-Layered strategy:
+Every node has **two radios**: UWB for the on-body network (node → master, time sync,
+ranging) and BLE for the master's wireless uplink to the PC. Paths to the PC:
 
 | Layer | Path | Role |
 |-------|------|------|
-| Live primary | BLE (master → PC, **host-native** Bluetooth — no dongle) | Main wireless link |
-| Live backup | UWB → UWB-USB dongle | Independent RF path (different band) |
+| Live | BLE (master → PC, **host-native** Bluetooth) | Main wireless link |
 | Wired | **SWD / SWO** via ST-LINK, or native USB (CDC) | Bench/dev + data recovery |
 
 Notes:
 - BLE uses **serial-over-BLE** (a transparent UART-style GATT service / NUS-equivalent), so
-  it behaves like a wireless UART. **Decided: host-native Bluetooth, no nRF52840 dongle** —
-  simpler, one less part.
+  it behaves like a wireless UART. **Decided: host-native Bluetooth** — the PC's own
+  Bluetooth receives it, no extra receiver hardware.
 - **Debug/data connection is a TC2030-IDC footprint** — bare pogo-pin pads on the PCB, not a
   soldered connector. A separate Tag-Connect TC2030 cable/clip clamps onto those pads from
   outside the board (to an ST-LINK) to make contact. Carries SWDIO/SWDCLK/SWO; SWO gives a
@@ -125,8 +123,7 @@ sourced directly from the fabricated board's BOM.
 
 | Function | Part | Notes |
 |----------|------|-------|
-| BLE receiver | **PC-native Bluetooth** | Decided: no nRF52840 dongle |
-| UWB backup receiver | UWB-USB dongle (DWM3000 + USB MCU) | Optional, for the UWB fallback path |
+| BLE receiver | **PC-native Bluetooth** | No extra receiver hardware |
 | Compute | Any PC (a discrete GPU helps for the live 3D visualization, not required) | Runs full pipeline + visualization |
 
 ### Node PCB v1.0 — renders & board views
@@ -302,8 +299,10 @@ wearable-imu/
   data path now that native USB is actually available).
 - **Master-aggregator + single BLE uplink** (vs UIP's per-node BLE): one BLE link instead of
   N (avoids PC multi-link flakiness) and gives tighter on-body sync.
-- **BLE primary + UWB backup:** two independent RF paths. BLE (2.4 GHz) is more robust to
-  body blocking than UWB (6.5–8 GHz); UWB is reserved for ranging where it's irreplaceable.
+- **BLE for the PC uplink, UWB kept on-body:** the master's single link to the PC is BLE
+  (2.4 GHz, more robust to body blocking than UWB's 6.5–8 GHz); UWB is reserved for the
+  on-body network — data transport to the master, time sync, and ranging — where it's
+  irreplaceable.
 - **PC does all heavy compute** (not a body MCU): the pipeline (and future ML) is GPU/
   desktop work, and PC-side iteration is far faster than reflashing firmware.
 - **No on-node SD card or flash IC:** RAM buffer only; avoids tedious card extraction, and
@@ -344,7 +343,6 @@ Top-level decisions still open, at a glance:
 - **Magnetometer:** whether to use it (characterize the lab's magnetic environment first;
   hardware is populated either way).
 - **Sample rate:** confirm 100 Hz (vs 200 Hz).
-- **Dongle:** PC-native BLE vs nRF52840 dongle; whether to build the UWB backup dongle.
 
 ---
 
