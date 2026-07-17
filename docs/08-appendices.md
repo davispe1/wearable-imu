@@ -2,9 +2,12 @@
 
 ## References
 
-- **Ultra Inertial Poser (UIP)** — SIGGRAPH 2024. Sparse body-worn IMU + UWB ranging,
-  fused on host with VQF, per-pair EKF, LSTM + graph-conv network, physics optimizer.
-  Direct inspiration for sensing approach and "thin nodes, heavy host" philosophy.
+- **[Ultra Inertial Poser (UIP)](https://siplab.org/projects/UltraInertialPoser)** —
+  SIGGRAPH 2024 ([ACM DL](https://dl.acm.org/doi/10.1145/3641519.3657465),
+  [arXiv](https://arxiv.org/abs/2404.19541),
+  [code](https://github.com/eth-siplab/UltraInertialPoser)). Sparse body-worn IMU + UWB
+  ranging, fused on host with VQF, per-pair EKF, LSTM + graph-conv network, physics
+  optimizer. Direct inspiration for sensing approach and "thin nodes, heavy host" philosophy.
 
 ## Glossary
 
@@ -19,10 +22,9 @@
 
 ## Data-sheet / resource links
 
-- STM32WBA55: https://www.st.com/en/microcontrollers-microprocessors/stm32wba55.html
+- STM32WB55CE: https://www.st.com/en/microcontrollers-microprocessors/stm32wb55ce.html
 - LSM6DSV16B: https://www.st.com/en/mems-and-sensors/lsm6dsv16b.html
 - BMM350: https://www.bosch-sensortec.com/products/motion-sensors/magnetometers/bmm350/
 - DWM3000: https://www.qorvo.com/products/p/DWM3000
-- W25Q64: https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/
 - BQ25185: https://www.ti.com/product/BQ25185
 - MAX17048: https://www.analog.com/en/products/max17048.html

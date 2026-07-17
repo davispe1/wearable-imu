@@ -18,11 +18,14 @@ Done (host side — real, tested code):
 - [x] Synthetic source emitting real wire bytes (`sim/generator.py`); capture/replay via `main.py`.
 
 Done (hardware/tooling):
-- [x] CubeMX project generated for the STM32WBA55CG (`firmware/Core/`, `Drivers/`, `Middlewares/`, `ThirdParty/`, `USB_Device/`, STM32CubeIDE project files). Replaces an earlier scaffolded `firmware/node/{App,Comms,Drivers,Sensors,Power}` stub layout (all TODO placeholders, no logic) — that layout was removed.
+- [x] CubeMX project generated for the STM32WB55CEUx (`firmware/Core/`, `Drivers/`, `Middlewares/`, `ThirdParty/`, `USB_Device/`, STM32CubeIDE project files). Replaces an earlier scaffolded `firmware/node/{App,Comms,Drivers,Sensors,Power}` stub layout (all TODO placeholders, no logic) — that layout was removed.
 - [x] IMU + magnetometer bring-up smoke test: firmware reads both sensors and
       prints raw values over serial, viewed with a serial monitor app. No
       sampling pipeline, packet format, or buffering yet — this is a "sensors
-      are alive and readable" check, not a data path.
+      are alive and readable" check, not a data path. **Needs confirming:** this is
+      very likely read over native USB-CDC (the MCU has native USB — see
+      [02-hardware.md](02-hardware.md)), not SWO as earlier docs assumed;
+      reconcile once confirmed.
 
 Not started (correcting a previous "done" claim — these files never had real
 implementations and the stub versions have since been deleted):
@@ -38,7 +41,8 @@ Next in Phase 1:
 - [ ] Implement the three items above against the generated CubeMX `Core/`.
 - [ ] SWO/ITM data output; host SWO ingest (SWV → bytes).
 - [ ] UWB TDMA schedule + DWM3000 driver; master aggregation.
-- [ ] RAM ring buffer + W25Q64 session logging.
+- [ ] RAM ring buffer for jitter/retransmit (no on-node flash IC — the fabricated
+      v1.0 board doesn't populate one; RAM buffering is the only local insurance).
 
 ## Parallel workstream — 5-DOF arm (teleoperation + calibration rig)
 
@@ -114,3 +118,19 @@ started, under [`test-rig/hardware/mechanical/v1.0/`](../test-rig/hardware/mecha
 - [ ] **Onboarding doc for new students** — not written yet. Needs to cover
       at least: STM32CubeProgrammer (flashing, updating the FUS / BLE stack),
       Serial Monitor Pro (viewing the sensor bring-up smoke-test output).
+- [ ] **Battery connector:** currently JST-SH 1.0mm 2-pin (`JST_SH_SM02B-SRSS-TB`
+      in the v1.0 schematic). Consider switching to **JST-XH 2.54mm 2-pin** for
+      v1.1/v2.0 — the connector that ships on most off-the-shelf LiPo packs,
+      avoiding re-terminating batteries by hand.
+- [ ] **Mechanical BOMs missing:** no bill of materials exists yet for either the
+      wearable case (`hardware/mechanical/v1.0/`) or the rig
+      (`test-rig/hardware/mechanical/v1.0/`) — fasteners, standoffs, print
+      material, and any off-the-shelf hardware (e.g. rig servos) aren't
+      documented anywhere. Needs the actual parts list from whoever built them.
+- [ ] **Mechanical fabrication process undocumented:** unlike the PCB (fabbed via
+      JLCPCB — see `hardware/electronics/v1.0/README.md`), the 3D-printing
+      process for the case and rig (printer/service, material, settings) isn't
+      written down anywhere.
+- [ ] **Tools list undocumented:** no written list of the tools used to build and
+      assemble the hardware (wire stripper is the only one mentioned so far) —
+      would help new students know what to have on hand.

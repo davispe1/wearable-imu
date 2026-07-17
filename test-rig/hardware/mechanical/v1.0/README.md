@@ -25,3 +25,11 @@ TODO: STEP/STL export for non-Fusion viewers, dimensions writeup, servo/mount BO
   instead of being worn), but its CAD/design files haven't been added here yet.
 - **`arm` piece needs reprinting:** the physical `arm` part currently on the lab
   rig needs a fresh print (current one is out of date / not usable as-is).
+
+## Bill of materials
+
+**Pending** — see [07-roadmap.md](../../../../docs/07-roadmap.md).
+
+## Fabrication
+
+**Pending** — see [07-roadmap.md](../../../../docs/07-roadmap.md).

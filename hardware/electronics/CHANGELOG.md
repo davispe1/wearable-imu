@@ -10,7 +10,10 @@
 
 ## v1.0 — initial bring-up revision
 
-- First layout. STM32WBA55 + DWM3000 + LSM6DSV16B + BMM350 + W25Q64.
-- USB-C charging only (BQ25185). No MCU USB.
+- First layout. STM32WB55CEUx + DWM3000 + LSM6DSV16B + BMM350. No on-node flash IC
+  (confirmed against the fabricated BOM — not populated).
+- USB-C charges via BQ25185, and also carries native USB data (the STM32WB55CEUx has
+  native USB — corrects an earlier "charging only, no MCU USB" claim made when the MCU
+  was mistakenly assumed to be a STM32WBA55).
 - TC2030-IDC footprint (Tag-Connect) for debug/data — bare pogo-pin pads on the PCB, no
   soldered connector; mates with a separate TC2030 cable/clip.

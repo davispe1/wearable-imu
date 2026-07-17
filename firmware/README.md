@@ -1,6 +1,6 @@
 # firmware/
 
-Node firmware for the STM32WBA55. **Git-versioned — no version folders here.**
+Node firmware for the STM32WB55CEUx. **Git-versioned — no version folders here.**
 Use `git tag imu-vX.Y.Z` to mark releases and tie them to a hardware revision.
 
 ## Structure
@@ -18,7 +18,7 @@ firmware/
 ├── ThirdParty/
 │   ├── BMM350/                  # magnetometer vendor driver
 │   └── lsm6dsv16bx/             # IMU vendor driver
-├── USB_Device/                   # USB device stack (charging path only — WBA55 has no native USB data)
+├── USB_Device/                   # USB CDC (virtual COM port) stack — the WB55CEUx has native USB
 ├── *.ld                          # linker scripts
 └── wearable IMU.ioc              # CubeMX config (source of truth for Core/)
 ```
@@ -32,7 +32,7 @@ or new folders alongside it as it's written.
 
 ## Bring-up order
 
-1. Generate `Core/` from STM32CubeMX for the STM32WBA55CG.
+1. Generate `Core/` from STM32CubeMX for the STM32WB55CEUx.
 2. Bring up SWD/SWO wired link first.
 3. Add UWB TDMA (data + sync + ranging).
 4. Add BLE serial-over-BLE uplink.

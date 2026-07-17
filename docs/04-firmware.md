@@ -1,6 +1,6 @@
 # 04 — Firmware
 
-> Node firmware for the STM32WBA55. Expands README §7 (phase 1).
+> Node firmware for the STM32WB55CEUx. Expands README §7 (phase 1).
 
 ## Status
 
@@ -67,17 +67,33 @@ encoders can't drift.
 ## Driver notes — BMM350 (planned)
 
 - **I2C1, address `0x14`** (ADSEL pin pulled low on this board) — same bus as the IMU.
-- Full-scale / sensitivity: TBD at mag bring-up (see [03-communication.md](03-communication.md)
-  and [06-calibration.md](06-calibration.md)).
+- Full-scale / sensitivity: not yet characterized, pending mag bring-up (see
+  [03-communication.md](03-communication.md) and [06-calibration.md](06-calibration.md)).
 - Vendor driver lives in `firmware/ThirdParty/BMM350/`.
 
 ## Bring-up order
 
-1. ~~Generate `Core/` from STM32CubeMX for the STM32WBA55CG~~ — done. Implement `port.c`.
+1. ~~Generate `Core/` from STM32CubeMX for the STM32WB55CEUx~~ — done. Implement `port.c`.
 2. SWD/SWO wired link: verify IMU sampling + frames out via SWO.
 3. UWB TDMA (data + sync + ranging).
 4. BLE serial-over-BLE uplink.
 
-## TDMA frame (TBD)
+## TDMA frame (planned — not implemented)
 
-TODO: define frame length, slot assignments, sync beacon timing.
+Nothing below is implemented or tested yet. These are pre-hardware-test design
+estimates, not decisions — UWB hasn't been brought up at all (see
+[07-roadmap.md](07-roadmap.md)), so treat every number here as provisional
+until it's actually run on the DWM3000.
+
+- One channel is intended to carry **data slots + ranging rounds + sync** via a
+  single TDMA frame.
+- Ranging is slow relative to data: **25–50 Hz** is expected to be plenty.
+- All-pairs ranging scales as N(N-1)/2 (15 pairs @ 6 nodes, 28 @ 8 nodes). For
+  upper-limb joint angles, **adjacent-segment pairs** may suffice — full mesh
+  is probably not required, but this hasn't been tested.
+- **Sync plan:** the master is intended to be the UWB time reference, with
+  nodes sub-ns aligned **on the body, before** data leaves; the master
+  timestamps aggregated data.
+
+TODO: define exact frame length, slot assignments, sync beacon timing — none
+of this is decided, only sketched above.

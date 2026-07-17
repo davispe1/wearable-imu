@@ -5,7 +5,9 @@ Node enclosure — revision 1.0.
 ## Contents
 
 - `PCB.step` — PCB STEP file (for ECAD/enclosure co-design)
-- `CASE.stl`, `case1.stl` — enclosure, 3D-printable
+- No printable enclosure file in the repo currently — the STLs (`CASE.stl`,
+  `case1.stl`) were removed as not needed. The renders below still document
+  what the design looked like.
 
 ## Assembly
 
@@ -24,3 +26,11 @@ power-button cutout. Case + battery + PCB assemble as shown above.
 
 TODO: dimensions writeup, mounting/strap interface details, connector cutout
 tolerances.
+
+## Bill of materials
+
+**Pending** — see [07-roadmap.md](../../../docs/07-roadmap.md).
+
+## Fabrication
+
+**Pending** — see [07-roadmap.md](../../../docs/07-roadmap.md).
