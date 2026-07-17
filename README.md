@@ -31,7 +31,7 @@ angles to validate the IMU pipeline's estimated angles against a known reference
 A network of small body-worn **IMU nodes** streams motion data to a **PC**, which reconstructs
 and displays a live 3D skeleton of the upper limb. The design philosophy is **thin nodes,
 heavy PC**: nodes only sample and transmit; all fusion, kinematics, and visualization run on
-the PC (which has an RTX 4060 GPU).
+the PC — a discrete GPU is recommended for the live 3D visualization but not strictly required.
 
 | Item | Decision (v1) |
 |------|----------------|
@@ -64,7 +64,7 @@ flowchart LR
         N2 -- UWB --> M
         N3 -- UWB --> M
     end
-    M -- "BLE (primary)" --> PC["PC + RTX 4060<br/>all processing + 3D viewer"]
+    M -- "BLE (primary)" --> PC["PC<br/>all processing + 3D viewer"]
     M -. "UWB (backup) via dongle" .-> PC
     M -. "SWD / SWO (wired dev/recovery)" .-> PC
 ```
@@ -142,6 +142,7 @@ Single identical board for every node. (No on-node SD card or flash IC — RAM b
 | Debug/data | **TC2030-IDC footprint** (Tag-Connect) | Bare pogo-pin pads, no on-board connector — mates with a separate TC2030 cable/clip. SWD + SWO — data out / flash recovery |
 | Indicator | LED | |
 | Battery | LiPo, **120 mAh** | |
+| Battery connector | **JST-SH 1.0mm, 2-pin** (`JST_SH_SM02B-SRSS-TB`) | Under consideration for v1.1/v2.0: switch to **JST-XH 2.54mm, 2-pin**, the connector that ships on most off-the-shelf LiPo packs — avoids re-terminating batteries. See [Open items](#11-open-items). |
 
 ### PC-side hardware
 
@@ -149,7 +150,7 @@ Single identical board for every node. (No on-node SD card or flash IC — RAM b
 |----------|------|-------|
 | BLE receiver | **PC-native Bluetooth** | Decided: no nRF52840 dongle |
 | UWB backup receiver | UWB-USB dongle (DWM3000 + USB MCU) | Optional, for the UWB fallback path |
-| Compute | PC with **RTX 4060** | Runs full pipeline + visualization |
+| Compute | Any PC (a discrete GPU helps for the live 3D visualization, not required) | Runs full pipeline + visualization |
 
 ### Node PCB v1.0 — renders & board views
 
@@ -255,7 +256,8 @@ wearable-imu/
 │   ├── 05-host-pipeline.md
 │   ├── 06-calibration.md
 │   ├── 07-roadmap.md              # build phases, real done/not-done status, open items
-│   └── 08-appendices.md
+│   ├── 08-appendices.md
+│   └── 09-tools.md                # tools used to build/assemble hardware — incomplete
 │
 ├── firmware/                      # STM32CubeIDE project for the STM32WB55CEUx node
 │   ├── Core/                      # CubeMX-generated (HAL, startup, clock) — do not hand-edit
@@ -339,6 +341,7 @@ wearable-imu/
 
 - **[Ultra Inertial Poser (UIP), SIGGRAPH 2024](https://siplab.org/projects/UltraInertialPoser)**
   (Armani, Qian, Jiang, Holz — [ACM DL](https://dl.acm.org/doi/10.1145/3641519.3657465),
+  [arXiv](https://arxiv.org/abs/2404.19541),
   [code](https://github.com/eth-siplab/UltraInertialPoser)) — sparse body-worn IMU + UWB
   inter-node ranging, fused on a host with VQF orientation, per-pair EKF, an LSTM + graph-conv
   network, and a physics dynamics optimizer to produce full-body pose.

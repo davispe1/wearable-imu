@@ -14,3 +14,4 @@ files expand on each area.
 | [06-calibration.md](06-calibration.md) | T-pose / N-pose procedure, saved profiles |
 | [07-roadmap.md](07-roadmap.md) | Build phases, open items, milestones |
 | [08-appendices.md](08-appendices.md) | References, glossary, data-sheet links |
+| [09-tools.md](09-tools.md) | Tools used to build/assemble the hardware — incomplete |

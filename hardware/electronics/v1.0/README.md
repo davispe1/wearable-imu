@@ -43,6 +43,19 @@ Straight from the fabricated board's BOM (`jlcpcb/production_filesV1.0/BOM-weara
 
 No flash IC is populated — RAM buffering only, no on-node session logging.
 
+## Fabrication
+
+Board fabricated and assembled via **JLCPCB** (PCBA — SMT assembly included, not just bare
+board fab). Production files were exported from KiCad using the **fabrication-toolkit**
+plugin (`fabrication-toolkit-options.json` holds its export settings).
+
+To re-order or fab a new revision:
+1. Open `wearable_IMU.kicad_pro` in KiCad, update as needed.
+2. Run the fabrication-toolkit plugin to regenerate `jlcpcb/production_filesV1.0/` (or a new
+   `production_filesVX.Y/` for a new revision) — Gerbers, `BOM-wearable_IMU.csv`,
+   `CPL-wearable_IMU.csv` (component placement).
+3. Upload the zipped Gerbers + BOM + CPL to JLCPCB's PCBA order flow.
+
 ## Board renders & layers
 
 **3D views**

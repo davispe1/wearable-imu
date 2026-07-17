@@ -25,3 +25,21 @@ TODO: STEP/STL export for non-Fusion viewers, dimensions writeup, servo/mount BO
   instead of being worn), but its CAD/design files haven't been added here yet.
 - **`arm` piece needs reprinting:** the physical `arm` part currently on the lab
   rig needs a fresh print (current one is out of date / not usable as-is).
+
+## Bill of materials
+
+**Not yet filled in — no BOM exists for this rig.** Servos (5-DOF implies at
+least 5, but model/count isn't documented), mounting hardware, and printed
+parts all need to be listed here from the actual physical build.
+
+| Category | Item | Qty | Notes |
+|----------|------|-----|-------|
+| Printed | Links / joints (per `RIG.f3z`) | ? | Not itemized per-part yet |
+| Actuation | Servo(s) | ? | Model not documented |
+| Fasteners | *(not documented)* | ? | |
+| Electronics | Servo driver / controller | ? | See `test-rig/hardware/electronics/v1.0/` — planned, not created |
+
+## Fabrication
+
+**Not yet documented** — printing method (printer/service), material, and
+print settings used for the rig parts aren't written down anywhere.

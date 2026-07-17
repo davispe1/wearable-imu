@@ -4,6 +4,7 @@
 
 - **[Ultra Inertial Poser (UIP)](https://siplab.org/projects/UltraInertialPoser)** —
   SIGGRAPH 2024 ([ACM DL](https://dl.acm.org/doi/10.1145/3641519.3657465),
+  [arXiv](https://arxiv.org/abs/2404.19541),
   [code](https://github.com/eth-siplab/UltraInertialPoser)). Sparse body-worn IMU + UWB
   ranging, fused on host with VQF, per-pair EKF, LSTM + graph-conv network, physics
   optimizer. Direct inspiration for sensing approach and "thin nodes, heavy host" philosophy.

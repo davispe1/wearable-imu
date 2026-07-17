@@ -118,3 +118,19 @@ started, under [`test-rig/hardware/mechanical/v1.0/`](../test-rig/hardware/mecha
 - [ ] **Onboarding doc for new students** — not written yet. Needs to cover
       at least: STM32CubeProgrammer (flashing, updating the FUS / BLE stack),
       Serial Monitor Pro (viewing the sensor bring-up smoke-test output).
+- [ ] **Battery connector:** currently JST-SH 1.0mm 2-pin (`JST_SH_SM02B-SRSS-TB`
+      in the v1.0 schematic). Consider switching to **JST-XH 2.54mm 2-pin** for
+      v1.1/v2.0 — the connector that ships on most off-the-shelf LiPo packs,
+      avoiding re-terminating batteries by hand.
+- [ ] **Mechanical BOMs missing:** no bill of materials exists yet for either the
+      wearable case (`hardware/mechanical/v1.0/`) or the rig
+      (`test-rig/hardware/mechanical/v1.0/`) — fasteners, standoffs, print
+      material, and any off-the-shelf hardware (e.g. rig servos) aren't
+      documented anywhere. Needs the actual parts list from whoever built them.
+- [ ] **Mechanical fabrication process undocumented:** unlike the PCB (fabbed via
+      JLCPCB — see `hardware/electronics/v1.0/README.md`), the 3D-printing
+      process for the case and rig (printer/service, material, settings) isn't
+      written down anywhere.
+- [ ] **Tools list undocumented:** no written list of the tools used to build and
+      assemble the hardware (wire stripper is the only one mentioned so far) —
+      would help new students know what to have on hand.
