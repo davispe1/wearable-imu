@@ -3,10 +3,8 @@
 > Wearable IMU-based motion-capture system for **live upper-limb pose estimation**.
 > Summer research project (IIT Chicago), with the goal of publishing.
 >
-> This document is the single source of truth for the system architecture, hardware,
-> communication design, processing pipeline, and repository structure. It is written
-> so it can be handed to **Claude Code** (or any collaborator) to scaffold and build
-> the project. See [How to use this document](#how-to-use-this-document) at the end.
+> Single source of truth for the system architecture, hardware, communication design,
+> processing pipeline, and repository structure.
 
 ### At a glance
 
@@ -72,20 +70,7 @@ flowchart LR
 - **On-body UWB network** carries node data to the master, provides **time sync**, and
   (phase 2) provides **inter-node ranging** for drift correction.
 - **Master node** aggregates all node data and is the single uplink to the PC.
-- **PC** runs the full pipeline and the live visualization.
-
-### Where the work happens
-
-```mermaid
-flowchart TD
-    A["Nodes: sample IMU+mag, UWB ranging, buffer, transmit"] --> B["Master: aggregate, sync, uplink"]
-    B --> C["PC: calibration"]
-    C --> D["PC: orientation filter"]
-    D --> E["PC: joint angles"]
-    E --> F["PC: EKF drift fix (phase 2)"]
-    F --> G["PC: forward kinematics (DH)"]
-    G --> H["PC: 3D visualization"]
-```
+- **PC** runs the full pipeline and the live visualization (stages detailed in [§6](#6-processing-pipeline-pc)).
 
 > **v1 needs no Kalman filter.** Orientation → joint angles → DH skeleton → render is a
 > complete working visualization. The EKF (with UWB distances) is a phase-2 enhancement
@@ -96,8 +81,7 @@ flowchart TD
 ## 3. Transports & fallbacks
 
 Every node has **two radios (BLE + UWB)**, giving multiple independent paths to the PC.
-There is no onboard flash IC for session logging (see [Design decisions](#9-design-decisions-log-the-why))
-— insurance against dropped data is RAM-buffering only. Layered strategy:
+Layered strategy:
 
 | Layer | Path | Role |
 |-------|------|------|
@@ -113,12 +97,10 @@ Notes:
   soldered connector. A separate Tag-Connect TC2030 cable/clip clamps onto those pads from
   outside the board (to an ST-LINK) to make contact. Carries SWDIO/SWDCLK/SWO; SWO gives a
   one-way MCU→PC data channel (read via SWV tooling).
-- **USB-C carries both charging and native USB data.** The STM32WB55CEUx has native USB
-  (unlike the STM32WBA55 originally assumed during design) — the firmware already has a
-  USB CDC (virtual COM port) stack (`firmware/USB_Device/`). The current sensor bring-up
-  smoke test is very likely read over this USB-CDC port with a serial monitor app, not over
-  SWO — **this needs confirming and the docs/README reconciled once confirmed**, since a lot
-  of earlier wording here assumed SWD/SWO was the only wired data path.
+- **USB-C carries both charging and native USB data** (the WB55CEUx has native USB; a USB
+  CDC stack is already in `firmware/USB_Device/`). The bring-up smoke test is likely read
+  over this USB-CDC port, not SWO — **needs confirming**, since earlier wording assumed
+  SWD/SWO was the only wired data path.
 - RAM ring buffer (~seconds) covers jitter/retransmit; a >3–5 s dropout is treated as a
   compromised session regardless, so heavy persistence is unnecessary.
 
@@ -126,7 +108,7 @@ Notes:
 
 ## 4. Hardware — Node BOM
 
-Single identical board for every node. (No on-node SD card or flash IC — RAM buffering only.)
+Single identical board for every node. The architecturally significant parts:
 
 | Function | Part | Notes |
 |----------|------|-------|
@@ -134,15 +116,10 @@ Single identical board for every node. (No on-node SD card or flash IC — RAM b
 | IMU | **LSM6DSV16BXTR** | 6-axis, onboard SFLP sensor fusion. **I2C1, addr `0x6B`** (SDO pulled high) |
 | Magnetometer | **BMM350** | Separate 3-axis → makes the node 9-DOF. **Decided: using it for v1** (not yet implemented in firmware — see [§7](#7-build-phases--roadmap)). **I2C1, addr `0x14`** (ADSEL pulled low) |
 | UWB | **DWM3000** | Data transport + sync + (phase-2) inter-node ranging. SPI1 (only SPI sensor on the node — IMU and mag are both I2C) |
-| SMPS (+3V3) | **TPSM828224** | |
-| Battery charger | **BQ25185** | Charges from USB-C VBUS |
-| Fuel gauge | **MAX17048G_T10** | |
-| Power button | **STM6601BM2DDM6F** | |
-| USB-C | Right-angle 16P | Charging **and** native USB data (CDC stack present in firmware) |
-| Debug/data | **TC2030-IDC footprint** (Tag-Connect) | Bare pogo-pin pads, no on-board connector — mates with a separate TC2030 cable/clip. SWD + SWO — data out / flash recovery |
-| Indicator | LED | |
-| Battery | LiPo, **120 mAh** | |
-| Battery connector | **JST-SH 1.0mm, 2-pin** (`JST_SH_SM02B-SRSS-TB`) | Under consideration for v1.1/v2.0: switch to **JST-XH 2.54mm, 2-pin**, the connector that ships on most off-the-shelf LiPo packs — avoids re-terminating batteries. See [Open items](#11-open-items). |
+
+Full parts list (power management, connectors, battery, indicator, etc.) is in
+[`hardware/electronics/v1.0/README.md`](hardware/electronics/v1.0/README.md#key-parts),
+sourced directly from the fabricated board's BOM.
 
 ### PC-side hardware
 
@@ -366,7 +343,6 @@ Top-level decisions still open, at a glance:
 - **Data format:** raw 9-DOF vs SFLP quaternion + raw mag.
 - **Magnetometer:** whether to use it (characterize the lab's magnetic environment first;
   hardware is populated either way).
-- **Battery:** final capacity (300–600 mAh).
 - **Sample rate:** confirm 100 Hz (vs 200 Hz).
 - **Dongle:** PC-native BLE vs nRF52840 dongle; whether to build the UWB backup dongle.
 
@@ -374,15 +350,7 @@ Top-level decisions still open, at a glance:
 
 ## How to use this document
 
-1. Keep this README and the `docs/` folder as the **markdown source of truth** (version with
-   git). Use **Mermaid** for all diagrams so they edit as text and render in GitHub/VS Code.
-2. To produce a polished copy for the team/professor, export markdown → Word/PDF (e.g., with
-   Pandoc, which renders the Mermaid diagrams to images). Don't hand-maintain two copies.
-3. To scaffold the project, hand this file to **Claude Code** and ask it to create the
-   repository structure in [Section 8](#8-repository-structure-proposed), generating stub
-   files with the responsibilities described here.
-4. Build in the phase order of [Section 7](#7-build-phases--roadmap): wired data path first,
-   then visualization (synthetic data), then BLE, then the EKF.
-5. **Looking for what to work on next?** Don't rely on this README's [Open items](#11-open-items)
-   list alone — [`docs/07-roadmap.md`](docs/07-roadmap.md) is the actively maintained TODO
-   tracker and is more current.
+This README and the `docs/` folder are the **markdown source of truth** (versioned in git;
+diagrams in **Mermaid** so they edit as text and render on GitHub). For a polished copy for
+the team/professor, export markdown → Word/PDF with Pandoc rather than hand-maintaining a
+second copy.
