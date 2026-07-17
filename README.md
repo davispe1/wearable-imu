@@ -70,20 +70,7 @@ flowchart LR
 - **On-body UWB network** carries node data to the master, provides **time sync**, and
   (phase 2) provides **inter-node ranging** for drift correction.
 - **Master node** aggregates all node data and is the single uplink to the PC.
-- **PC** runs the full pipeline and the live visualization.
-
-### Where the work happens
-
-```mermaid
-flowchart TD
-    A["Nodes: sample IMU+mag, UWB ranging, buffer, transmit"] --> B["Master: aggregate, sync, uplink"]
-    B --> C["PC: calibration"]
-    C --> D["PC: orientation filter"]
-    D --> E["PC: joint angles"]
-    E --> F["PC: EKF drift fix (phase 2)"]
-    F --> G["PC: forward kinematics (DH)"]
-    G --> H["PC: 3D visualization"]
-```
+- **PC** runs the full pipeline and the live visualization (stages detailed in [§6](#6-processing-pipeline-pc)).
 
 > **v1 needs no Kalman filter.** Orientation → joint angles → DH skeleton → render is a
 > complete working visualization. The EKF (with UWB distances) is a phase-2 enhancement
