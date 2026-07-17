@@ -366,7 +366,6 @@ Top-level decisions still open, at a glance:
 - **Data format:** raw 9-DOF vs SFLP quaternion + raw mag.
 - **Magnetometer:** whether to use it (characterize the lab's magnetic environment first;
   hardware is populated either way).
-- **Battery:** final capacity (300–600 mAh).
 - **Sample rate:** confirm 100 Hz (vs 200 Hz).
 - **Dongle:** PC-native BLE vs nRF52840 dongle; whether to build the UWB backup dongle.
 
