@@ -126,7 +126,7 @@ Notes:
 
 ## 4. Hardware — Node BOM
 
-Single identical board for every node. (No on-node SD card or flash IC — RAM buffering only.)
+Single identical board for every node. The architecturally significant parts:
 
 | Function | Part | Notes |
 |----------|------|-------|
@@ -134,15 +134,10 @@ Single identical board for every node. (No on-node SD card or flash IC — RAM b
 | IMU | **LSM6DSV16BXTR** | 6-axis, onboard SFLP sensor fusion. **I2C1, addr `0x6B`** (SDO pulled high) |
 | Magnetometer | **BMM350** | Separate 3-axis → makes the node 9-DOF. **Decided: using it for v1** (not yet implemented in firmware — see [§7](#7-build-phases--roadmap)). **I2C1, addr `0x14`** (ADSEL pulled low) |
 | UWB | **DWM3000** | Data transport + sync + (phase-2) inter-node ranging. SPI1 (only SPI sensor on the node — IMU and mag are both I2C) |
-| SMPS (+3V3) | **TPSM828224** | |
-| Battery charger | **BQ25185** | Charges from USB-C VBUS |
-| Fuel gauge | **MAX17048G_T10** | |
-| Power button | **STM6601BM2DDM6F** | |
-| USB-C | Right-angle 16P | Charging **and** native USB data (CDC stack present in firmware) |
-| Debug/data | **TC2030-IDC footprint** (Tag-Connect) | Bare pogo-pin pads, no on-board connector — mates with a separate TC2030 cable/clip. SWD + SWO — data out / flash recovery |
-| Indicator | LED | |
-| Battery | LiPo, **120 mAh** | |
-| Battery connector | **JST-SH 1.0mm, 2-pin** (`JST_SH_SM02B-SRSS-TB`) | Under consideration for v1.1/v2.0: switch to **JST-XH 2.54mm, 2-pin**, the connector that ships on most off-the-shelf LiPo packs — avoids re-terminating batteries. See [Open items](#11-open-items). |
+
+Full parts list (power management, connectors, battery, indicator, etc.) is in
+[`hardware/electronics/v1.0/README.md`](hardware/electronics/v1.0/README.md#key-parts),
+sourced directly from the fabricated board's BOM.
 
 ### PC-side hardware
 
