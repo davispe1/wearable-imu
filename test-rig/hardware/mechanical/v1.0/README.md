@@ -28,18 +28,8 @@ TODO: STEP/STL export for non-Fusion viewers, dimensions writeup, servo/mount BO
 
 ## Bill of materials
 
-**Not yet filled in — no BOM exists for this rig.** Servos (5-DOF implies at
-least 5, but model/count isn't documented), mounting hardware, and printed
-parts all need to be listed here from the actual physical build.
-
-| Category | Item | Qty | Notes |
-|----------|------|-----|-------|
-| Printed | Links / joints (per `RIG.f3z`) | ? | Not itemized per-part yet |
-| Actuation | Servo(s) | ? | Model not documented |
-| Fasteners | *(not documented)* | ? | |
-| Electronics | Servo driver / controller | ? | See `test-rig/hardware/electronics/v1.0/` — planned, not created |
+**Pending** — see [07-roadmap.md](../../../../docs/07-roadmap.md).
 
 ## Fabrication
 
-**Not yet documented** — printing method (printer/service), material, and
-print settings used for the rig parts aren't written down anywhere.
+**Pending** — see [07-roadmap.md](../../../../docs/07-roadmap.md).

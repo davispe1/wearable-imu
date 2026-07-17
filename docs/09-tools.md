@@ -1,13 +1,12 @@
 # 09 — Tools
 
-> **Not yet complete.** Only one tool has been explicitly confirmed so far; this
-> is a starting point to expand as the actual build tools get listed out.
+> **Not yet complete** — a starting point to expand as the actual build tools
+> get listed out.
 
 ## Electronics assembly / rework
 
 | Tool | Used for | Notes |
 |------|----------|-------|
-| Wire stripper | Battery lead / wiring prep | Confirmed in use |
 | *(TODO)* | Soldering / rework | Model not documented |
 | *(TODO)* | Programming/flashing | See STM32CubeProgrammer note in [07-roadmap.md](07-roadmap.md) (onboarding doc item) |
 
