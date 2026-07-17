@@ -28,17 +28,20 @@ KiCad's `.lck` lock files. Added patterns to `.gitignore` so these don't come ba
 
 ## Key parts
 
+Straight from the fabricated board's BOM (`jlcpcb/production_filesV1.0/BOM-wearable_IMU.csv`):
+
 | Function | Part |
 |----------|------|
-| MCU | STM32WBA55CGU7 |
+| MCU | STM32WB55CEUx |
 | IMU | LSM6DSV16BXTR |
 | Mag | BMM350 |
 | UWB | DWM3000 |
-| Flash | W25Q64JVXGIM |
 | SMPS | TPSM828224 |
 | Charger | BQ25185 |
 | Fuel gauge | MAX17048G+T10 |
 | Power btn | STM6601BM2DDM6F |
+
+No flash IC is populated — RAM buffering only, no on-node session logging.
 
 ## Board renders & layers
 

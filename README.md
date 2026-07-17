@@ -14,11 +14,15 @@
 |---|---|
 | ![PCB 3D top](hardware/electronics/v1.0/documentation/pcb-3d-top.png) | ![5-DOF arm rig](test-rig/hardware/mechanical/v1.0/isometric_rig_view.png) |
 
-**Left:** the wearable IMU node PCB (STM32WBA55 + DWM3000 + LSM6DSV16BXTR + BMM350).
+**Left:** the wearable IMU node PCB (STM32WB55CEUx + DWM3000 + LSM6DSV16BXTR + BMM350).
 **Right:** a separate parallel sub-project, [`test-rig/`](test-rig/README.md) — a
 motorised 5-DOF arm used two ways: (1) **teleoperation demo**, driven live from the
 wearable nodes, and (2) **calibration / ground truth**, moved through known joint
 angles to validate the IMU pipeline's estimated angles against a known reference.
+
+> **New to this project?** The actively maintained TODO / open-work list is
+> [`docs/07-roadmap.md`](docs/07-roadmap.md) — start there to see what's done, what's
+> open, and what's missing before picking up work.
 
 ---
 
@@ -43,7 +47,7 @@ the PC (which has an RTX 4060 GPU).
 
 ## 2. System architecture
 
-All nodes use **identical hardware** (STM32WBA55 + DWM3000). One node is designated the
+All nodes use **identical hardware** (STM32WB55CEUx + DWM3000). One node is designated the
 **master** purely in firmware. Because the boards are identical, multiple transport
 topologies can be tested and compared on the same hardware (a useful experimental result).
 
@@ -52,10 +56,10 @@ topologies can be tested and compared on the same hardware (a useful experimenta
 ```mermaid
 flowchart LR
     subgraph Body["On-body (wearable)"]
-        N1["Sensor node 1<br/>WBA55 + DWM3000"]
-        N2["Sensor node 2<br/>WBA55 + DWM3000"]
-        N3["Sensor node N<br/>WBA55 + DWM3000"]
-        M["Master node<br/>WBA55 + DWM3000"]
+        N1["Sensor node 1<br/>WB55CE + DWM3000"]
+        N2["Sensor node 2<br/>WB55CE + DWM3000"]
+        N3["Sensor node N<br/>WB55CE + DWM3000"]
+        M["Master node<br/>WB55CE + DWM3000"]
         N1 -- UWB --> M
         N2 -- UWB --> M
         N3 -- UWB --> M
@@ -91,15 +95,15 @@ flowchart TD
 
 ## 3. Transports & fallbacks
 
-Every node has **two radios (BLE + UWB)** plus onboard flash, giving multiple independent
-paths to the PC. Layered strategy:
+Every node has **two radios (BLE + UWB)**, giving multiple independent paths to the PC.
+There is no onboard flash IC for session logging (see [Design decisions](#9-design-decisions-log-the-why))
+— insurance against dropped data is RAM-buffering only. Layered strategy:
 
 | Layer | Path | Role |
 |-------|------|------|
 | Live primary | BLE (master → PC, **host-native** Bluetooth — no dongle) | Main wireless link |
 | Live backup | UWB → UWB-USB dongle | Independent RF path (different band) |
-| Wired | **SWD / SWO** via ST-LINK | Bench/dev + data recovery (one-way out) |
-| Insurance | **W25Q64** per-node logging | No data loss even if all live links fail; recovered over SWD |
+| Wired | **SWD / SWO** via ST-LINK, or native USB (CDC) | Bench/dev + data recovery |
 
 Notes:
 - BLE uses **serial-over-BLE** (a transparent UART-style GATT service / NUS-equivalent), so
@@ -108,10 +112,13 @@ Notes:
 - **Debug/data connection is a TC2030-IDC footprint** — bare pogo-pin pads on the PCB, not a
   soldered connector. A separate Tag-Connect TC2030 cable/clip clamps onto those pads from
   outside the board (to an ST-LINK) to make contact. Carries SWDIO/SWDCLK/SWO; SWO gives a
-  one-way MCU→PC data channel (read via SWV tooling). This replaces the earlier USB-UART
-  bridge idea (no CP2102N).
-- **USB-C still charges** the battery (handled by the BQ25185, independent of the MCU). The
-  WBA55 has **no native USB**, so USB-C is charging-only.
+  one-way MCU→PC data channel (read via SWV tooling).
+- **USB-C carries both charging and native USB data.** The STM32WB55CEUx has native USB
+  (unlike the STM32WBA55 originally assumed during design) — the firmware already has a
+  USB CDC (virtual COM port) stack (`firmware/USB_Device/`). The current sensor bring-up
+  smoke test is very likely read over this USB-CDC port with a serial monitor app, not over
+  SWO — **this needs confirming and the docs/README reconciled once confirmed**, since a lot
+  of earlier wording here assumed SWD/SWO was the only wired data path.
 - RAM ring buffer (~seconds) covers jitter/retransmit; a >3–5 s dropout is treated as a
   compromised session regardless, so heavy persistence is unnecessary.
 
@@ -119,20 +126,19 @@ Notes:
 
 ## 4. Hardware — Node BOM
 
-Single identical board for every node. (No on-node SD card.)
+Single identical board for every node. (No on-node SD card or flash IC — RAM buffering only.)
 
 | Function | Part | Notes |
 |----------|------|-------|
-| MCU | **STM32WBA55CG** (UFQFPN48, e.g. STM32WBA55CGU7) | Cortex-M33 @ 100 MHz, BLE 5.4, 1 MB flash, 128 KB SRAM, SESIP Level 3. Drives DWM3000 over SPI. |
+| MCU | **STM32WB55CEUx** (UFQFPN48) | Dual-core: Cortex-M4 @ 64 MHz (application) + Cortex-M0+ @ 32 MHz (radio stack), Bluetooth 5.4 LE + 802.15.4, 512 KB flash, 256 KB SRAM, native USB. Drives DWM3000 over SPI. |
 | IMU | **LSM6DSV16BXTR** | 6-axis, onboard SFLP sensor fusion. **I2C1, addr `0x6B`** (SDO pulled high) |
 | Magnetometer | **BMM350** | Separate 3-axis → makes the node 9-DOF. **Decided: using it for v1** (not yet implemented in firmware — see [§7](#7-build-phases--roadmap)). **I2C1, addr `0x14`** (ADSEL pulled low) |
 | UWB | **DWM3000** | Data transport + sync + (phase-2) inter-node ranging. SPI1 (only SPI sensor on the node — IMU and mag are both I2C) |
-| Local flash | **W25Q64JVXGIM** (8 MB) | RAM-buffer backstop + no-loss session insurance |
 | SMPS (+3V3) | **TPSM828224** | |
 | Battery charger | **BQ25185** | Charges from USB-C VBUS |
 | Fuel gauge | **MAX17048G_T10** | |
 | Power button | **STM6601BM2DDM6F** | |
-| USB-C | Right-angle 16P | **Charging only** (no MCU USB) |
+| USB-C | Right-angle 16P | Charging **and** native USB data (CDC stack present in firmware) |
 | Debug/data | **TC2030-IDC footprint** (Tag-Connect) | Bare pogo-pin pads, no on-board connector — mates with a separate TC2030 cable/clip. SWD + SWO — data out / flash recovery |
 | Indicator | LED | |
 | Battery | LiPo, **120 mAh** | |
@@ -170,22 +176,15 @@ Single identical board for every node. (No on-node SD card.)
 - **Option A (preferred for the rig): raw 9-DOF** — accel(3) + gyro(3) + mag(3) + timestamp.
   Maximum flexibility; host does all fusion. ~40 bytes/sample.
 - **Option B: SFLP quaternion** (from the LSM6DSV16B) + raw mag. Smaller, less host work.
-- **Decision: open** (see [Open items](#11-open-items--tbd)). Magnetometer rate can be lower
+- **Decision: open** (see [Open items](#11-open-items)). Magnetometer rate can be lower
   (e.g., 50–100 Hz).
 
-### Bandwidth (single BLE uplink, aggregated)
-- ~**230 kbps** for 8 nodes raw @ 100 Hz — comfortable for one BLE 5.x link.
-- ~**460 kbps** @ 200 Hz — feasible but near the edge of reliable laptop BLE. → run v1 at 100 Hz.
-
-### UWB on-body scheduling
-- One channel does **data slots + ranging rounds + sync** via a **TDMA frame**.
-- Ranging is slow relative to data: **25–50 Hz** is plenty.
-- All-pairs ranging scales as N(N-1)/2 (15 pairs @ 6 nodes, 28 @ 8). For upper-limb joint
-  angles, **adjacent-segment pairs** may suffice — full mesh not required.
-
-### Sync
-- The master is the UWB time reference; nodes are sub-ns aligned **on the body, before**
-  data leaves. Master timestamps aggregated data.
+> Bandwidth budgeting and UWB TDMA scheduling design used to be spelled out here with
+> specific numbers, but neither BLE nor UWB has actually been tested on hardware yet — those
+> numbers were pre-hardware-test estimates, not decisions. They now live in
+> [`docs/04-firmware.md`](docs/04-firmware.md#tdma-frame-planned--not-implemented) (UWB
+> scheduling/sync) and [`docs/03-communication.md`](docs/03-communication.md#6-bandwidth-check)
+> (bandwidth), clearly marked as unvalidated estimates rather than settled numbers.
 
 ---
 
@@ -217,7 +216,7 @@ Single identical board for every node. (No on-node SD card.)
    UWB inter-node distances for drift/position.
 
 > BLE de-risking: prove the entire system over wired (SWD/SWO) first; learn BLE in isolation
-> on a NUCLEO-WBA55CG with ST's serial-over-BLE example; then integrate with the wired path
+> on a NUCLEO-WB55RG with ST's serial-over-BLE example; then integrate with the wired path
 > still available as a safety net.
 
 ### Parallel workstream — 5-DOF arm / test rig
@@ -258,12 +257,12 @@ wearable-imu/
 │   ├── 07-roadmap.md              # build phases, real done/not-done status, open items
 │   └── 08-appendices.md
 │
-├── firmware/                      # STM32CubeIDE project for the STM32WBA55 node
+├── firmware/                      # STM32CubeIDE project for the STM32WB55CEUx node
 │   ├── Core/                      # CubeMX-generated (HAL, startup, clock) — do not hand-edit
 │   ├── Drivers/                   # CMSIS + STM32WBxx HAL
 │   ├── Middlewares/ST/            # ST middleware
 │   ├── ThirdParty/                # BMM350, lsm6dsv16bx vendor drivers
-│   ├── USB_Device/                # USB device stack (charging path only)
+│   ├── USB_Device/                # USB CDC (virtual COM port) stack — native USB, not charging-only
 │   └── *.ioc / *.ld               # CubeMX config + linker scripts
 │   (application logic — packet serializer, UWB TDMA, BLE serial, role state
 │    machines — not written yet; see docs/07-roadmap.md)
@@ -316,20 +315,21 @@ wearable-imu/
     ranging accuracy. Chosen as the **sole radio** on the node: it replaces what would
     otherwise be a separate ranging radio, handling data transport, sub-ns time sync,
     and inter-node ranging in one part.
-- **MCU = STM32WBA55** (over the earlier L431 / U535): the master needs BLE; identical
-  BLE-capable boards let any node be master and enable topology testing. WBA55 is M33,
-  ultra-low-power (good for a small battery), and SESIP3-certified (useful for a publishing /
-  compliance story). Trade-off: no native USB — covered by SWD/SWO for wired data.
+- **MCU = STM32WB55CEUx** (over the earlier L431 / U535): the master needs BLE; identical
+  BLE-capable boards let any node be master and enable topology testing. Dual-core
+  (Cortex-M4 app core + Cortex-M0+ radio stack core), ultra-low-power (good for a small
+  battery), and has native USB (unlike the STM32WBA55 originally assumed during design —
+  see the note in [§3](#3-transports--fallbacks) about reconciling the SWD/SWO-vs-USB wired
+  data path now that native USB is actually available).
 - **Master-aggregator + single BLE uplink** (vs UIP's per-node BLE): one BLE link instead of
   N (avoids PC multi-link flakiness) and gives tighter on-body sync.
 - **BLE primary + UWB backup:** two independent RF paths. BLE (2.4 GHz) is more robust to
   body blocking than UWB (6.5–8 GHz); UWB is reserved for ranging where it's irreplaceable.
 - **PC does all heavy compute** (not a body MCU): the pipeline (and future ML) is GPU/
   desktop work, and PC-side iteration is far faster than reflashing firmware.
-- **No on-node SD card:** RAM buffer + W25Q64 insurance instead; avoids tedious card
-  extraction; recovery happens over SWD.
-- **SWD/SWO for wired data** (instead of a USB-UART bridge): reuses an existing connector,
-  drops the CP2102N, and the ST-LINK is already needed for flashing.
+- **No on-node SD card or flash IC:** RAM buffer only; avoids tedious card extraction, and
+  the fabricated v1.0 board doesn't populate a flash chip at all — recovery happens over
+  SWD (or USB, pending the reconciliation above).
 - **100 Hz for v1:** matches UIP and is sufficient for full-body pose; keeps BLE bandwidth
   comfortable.
 
@@ -337,9 +337,11 @@ wearable-imu/
 
 ## 10. References
 
-- **Ultra Inertial Poser (UIP), SIGGRAPH 2024** — sparse body-worn IMU + UWB inter-node
-  ranging, fused on a host with VQF orientation, per-pair EKF, an LSTM + graph-conv network,
-  and a physics dynamics optimizer to produce full-body pose.
+- **[Ultra Inertial Poser (UIP), SIGGRAPH 2024](https://siplab.org/projects/UltraInertialPoser)**
+  (Armani, Qian, Jiang, Holz — [ACM DL](https://dl.acm.org/doi/10.1145/3641519.3657465),
+  [code](https://github.com/eth-siplab/UltraInertialPoser)) — sparse body-worn IMU + UWB
+  inter-node ranging, fused on a host with VQF orientation, per-pair EKF, an LSTM + graph-conv
+  network, and a physics dynamics optimizer to produce full-body pose.
   - **This project mirrors** the IMU + UWB sensing approach and the "thin nodes, host does
     the work" philosophy.
   - **This project differs:** adds a magnetometer (9-DOF vs UIP's 6-DoF); uses a
@@ -348,16 +350,22 @@ wearable-imu/
 
 ---
 
-## 11. Open items / TBD
+## 11. Open items
 
+**The actively maintained TODO / open-work list lives in
+[`docs/07-roadmap.md`](docs/07-roadmap.md)** — its "Open items", "Hardware revisions", and
+"Known gaps" sections are the source of truth for what's decided, what's still open, and
+what's missing (including firmware, UWB/BLE testing, the test-rig end-effector adapter, and
+the onboarding doc for new students). This section is intentionally just a short pointer
+rather than a second list, to avoid the two drifting out of sync.
+
+Top-level decisions still open, at a glance:
 - **Data format:** raw 9-DOF vs SFLP quaternion + raw mag.
 - **Magnetometer:** whether to use it (characterize the lab's magnetic environment first;
   hardware is populated either way).
 - **Battery:** final capacity (300–600 mAh).
-- **Node count for tests:** 2 confirmed (wrist, clavicle), chest possible as a 3rd → 6–8.
 - **Sample rate:** confirm 100 Hz (vs 200 Hz).
 - **Dongle:** PC-native BLE vs nRF52840 dongle; whether to build the UWB backup dongle.
-- **EKF scope:** confirm phase-2 (not v1).
 
 ---
 
@@ -372,3 +380,6 @@ wearable-imu/
    files with the responsibilities described here.
 4. Build in the phase order of [Section 7](#7-build-phases--roadmap): wired data path first,
    then visualization (synthetic data), then BLE, then the EKF.
+5. **Looking for what to work on next?** Don't rely on this README's [Open items](#11-open-items)
+   list alone — [`docs/07-roadmap.md`](docs/07-roadmap.md) is the actively maintained TODO
+   tracker and is more current.

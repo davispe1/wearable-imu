@@ -12,7 +12,7 @@
 
 See README §2 (Mermaid diagrams). Key points:
 
-- N identical STM32WBA55 + DWM3000 nodes. One is designated **master** in firmware.
+- N identical STM32WB55CEUx + DWM3000 nodes. One is designated **master** in firmware.
 - On-body UWB bus: data + time-sync + inter-node ranging in a TDMA frame.
 - Single BLE uplink from master to host (primary). UWB-USB dongle = backup path.
 

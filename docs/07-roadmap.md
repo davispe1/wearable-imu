@@ -18,11 +18,14 @@ Done (host side — real, tested code):
 - [x] Synthetic source emitting real wire bytes (`sim/generator.py`); capture/replay via `main.py`.
 
 Done (hardware/tooling):
-- [x] CubeMX project generated for the STM32WBA55CG (`firmware/Core/`, `Drivers/`, `Middlewares/`, `ThirdParty/`, `USB_Device/`, STM32CubeIDE project files). Replaces an earlier scaffolded `firmware/node/{App,Comms,Drivers,Sensors,Power}` stub layout (all TODO placeholders, no logic) — that layout was removed.
+- [x] CubeMX project generated for the STM32WB55CEUx (`firmware/Core/`, `Drivers/`, `Middlewares/`, `ThirdParty/`, `USB_Device/`, STM32CubeIDE project files). Replaces an earlier scaffolded `firmware/node/{App,Comms,Drivers,Sensors,Power}` stub layout (all TODO placeholders, no logic) — that layout was removed.
 - [x] IMU + magnetometer bring-up smoke test: firmware reads both sensors and
       prints raw values over serial, viewed with a serial monitor app. No
       sampling pipeline, packet format, or buffering yet — this is a "sensors
-      are alive and readable" check, not a data path.
+      are alive and readable" check, not a data path. **Needs confirming:** this is
+      very likely read over native USB-CDC (the MCU has native USB — see
+      [02-hardware.md](02-hardware.md)), not SWO as earlier docs assumed;
+      reconcile once confirmed.
 
 Not started (correcting a previous "done" claim — these files never had real
 implementations and the stub versions have since been deleted):
@@ -38,7 +41,8 @@ Next in Phase 1:
 - [ ] Implement the three items above against the generated CubeMX `Core/`.
 - [ ] SWO/ITM data output; host SWO ingest (SWV → bytes).
 - [ ] UWB TDMA schedule + DWM3000 driver; master aggregation.
-- [ ] RAM ring buffer + W25Q64 session logging.
+- [ ] RAM ring buffer for jitter/retransmit (no on-node flash IC — the fabricated
+      v1.0 board doesn't populate one; RAM buffering is the only local insurance).
 
 ## Parallel workstream — 5-DOF arm (teleoperation + calibration rig)
 

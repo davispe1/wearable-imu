@@ -106,7 +106,7 @@ written) and the constants in `host/wearable_imu/ingest/protocol.py`.** v1 defau
 |----------|-----------|-------------------|-------------|
 | Accel | ±8 g | 0.244 mg/LSB | `g = raw × 0.244e-3`; `m/s² = g × 9.80665` |
 | Gyro | ±2000 dps | 70 mdps/LSB | `dps = raw × 0.070`; `rad/s = dps × π/180` |
-| Mag (BMM350) | TBD | TBD at mag bring-up | TBD at mag bring-up — see [06](06-calibration.md) |
+| Mag (BMM350) | not yet characterized | not yet characterized | pending mag bring-up — see [06](06-calibration.md) |
 
 > Values are LSM6DSV-family datasheet figures — **verify against the LSM6DSV16B datasheet
 > when hardware arrives.**

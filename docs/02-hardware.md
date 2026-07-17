@@ -6,24 +6,25 @@
 
 See README §4 for the full table. Key parts:
 
-- MCU: STM32WBA55CGU7 (UFQFPN48)
+- MCU: STM32WB55CEUx (UFQFPN48), dual-core Cortex-M4 (64 MHz) + Cortex-M0+ (32 MHz),
+  512 KB flash, 256 KB SRAM, native USB
 - IMU: LSM6DSV16BXTR (6-axis + onboard SFLP), I2C
-- Mag: BMM350 (populated, use TBD — see open items), I2C
-- UWB: DWM3000 (SPI from WBA55 — the only SPI sensor on the node)
-- Flash: W25Q64JVXGIM (8 MB, SPI)
+- Mag: BMM350 (populated, use open — see open items), I2C
+- UWB: DWM3000 (SPI from WB55CEUx — the only SPI sensor on the node)
+- No on-node flash IC (confirmed against the fabricated PCB's BOM — not populated)
 - Charger: BQ25185 | Fuel gauge: MAX17048 | SMPS: TPSM828224
 
 ## Interfaces
 
-| Peripheral | WBA55 interface | Notes |
+| Peripheral | WB55CEUx interface | Notes |
 |------------|----------------|-------|
-| DWM3000 | SPI1 | IRQ on PXX — TBD |
+| DWM3000 | SPI1 | IRQ pin not yet assigned in firmware |
 | LSM6DSV16BXTR | I2C1, addr `0x6B` | SDO pin pulled high. INT1/INT2 |
 | BMM350 | I2C1, addr `0x14` | ADSEL pin pulled low |
-| W25Q64 | SPI3 — TBD | |
-| BQ25185 | I2C — TBD | |
-| MAX17048 | I2C — TBD | |
+| BQ25185 | I2C, bus not yet assigned in firmware | |
+| MAX17048 | I2C, bus not yet assigned in firmware | |
 | SWD/SWO | SWDIO/SWDCLK/SWO | TC2030-IDC footprint (Tag-Connect) — bare pogo-pin pads, no on-board connector; mates with a separate TC2030 cable/clip |
+| USB | Native USB (CDC stack present in firmware) | See README §3 — needs reconciling with the SWD/SWO wired-data-path assumption now that native USB is confirmed |
 
 ## Power tree
 

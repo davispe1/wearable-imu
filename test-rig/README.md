@@ -28,7 +28,7 @@ recreated once work actually starts on each part.
 | Folder | Status | Contents |
 |---|---|---|
 | [`hardware/mechanical/v1.0/`](hardware/mechanical/v1.0/README.md) | **In progress** | Rig 3D files (arm links, servo mounts) — Fusion 360 source + isometric render. |
-| `hardware/electronics/v1.0/` | Planned, not created | Rig servo driver / controller PCB. MCU + servo driver choice: TBD. |
+| `hardware/electronics/v1.0/` | Planned, not created | Rig servo driver / controller PCB. MCU + servo driver choice not yet decided. |
 | `firmware/` | Planned, not created | Rig motion controller firmware. Git-versioned, no version folders — tag releases as `rig-vX.Y.Z`. |
 | `control/` | Planned, not created | Host-side: drive the rig through scripted motions, log ground-truth joint angles (timestamped CSV), and compare against the IMU pipeline's estimated angles (error plot). |
 
