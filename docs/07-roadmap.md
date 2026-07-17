@@ -103,8 +103,7 @@ started, under [`test-rig/hardware/mechanical/v1.0/`](../test-rig/hardware/mecha
 - [x] **Sample rate:** **120 Hz** — the LSM6DSV16B ODR grid has no 100 Hz step; 120 Hz
       is the closest to the README target. Samples are timestamped so the exact rate is
       not load-bearing; host can decimate 120→100 if ever needed.
-- [x] **BLE receiver: host-native.** No nRF52840 dongle — dropped from the design.
-- [ ] **UWB backup dongle:** build or defer (separate from the BLE receiver decision above)
+- [x] **BLE receiver: host-native.** The PC's own Bluetooth receives the uplink; no extra receiver hardware.
 - [ ] **Orientation filter:** complementary vs Madgwick vs VQF vs SFLP. Not reached
       yet — the pipeline currently only exists as far as forward kinematics +
       visualization (the MATLAB arm GUI); no real orientation-filter work has

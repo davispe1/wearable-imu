@@ -17,7 +17,7 @@
 
 ## 1. Frame structure
 
-Every frame on every transport (SWO, BLE serial, UWB-dongle, file replay) uses this envelope:
+Every frame on every transport (SWO, BLE serial, USB CDC, file replay) uses this envelope:
 
 ```
 ┌────────────┬──────┬─────────────────────────────────────────────┐
